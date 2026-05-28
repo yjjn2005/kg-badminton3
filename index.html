@@ -1,0 +1,1148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>KG 배드민턴 PRO v3 · 스마트 매칭 시스템</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+<link rel="preconnect" href="https://unpkg.com" crossorigin />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+  :root{
+    --navy-900:#070F1C; --navy-800:#0E1A30; --navy-700:#15233F; --navy-600:#1B2E54;
+    --navy-500:#2C4F7E;
+    --gold-600:#B5912D; --gold-500:#D4AF37; --gold-400:#E8C254;
+    --cream-50:#FDFBF7; --cream-100:#F7F3EC; --cream-200:#ECE3D0;
+    --red-500:#E25555; --green-500:#5CCB7A; --cyan-400:#5BE2D9; --purple-400:#B59CFF;
+  }
+  html,body{ font-family:'Pretendard Variable','Pretendard',ui-sans-serif,system-ui,sans-serif; letter-spacing:-.005em; }
+  body{ background:#070F1C; color:var(--cream-50); }
+  .luxury-shadow{ box-shadow: 0 12px 36px -8px rgba(0,0,0,.6), 0 4px 12px rgba(212,175,55,.08); }
+  .glass{ background: rgba(21,35,63,.72); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border:1px solid rgba(212,175,55,.15); }
+  .gold-text{ color:var(--gold-400); }
+  .gold-grad{ background:linear-gradient(135deg,#E8C254,#B5912D); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .btn-gold{ background:linear-gradient(135deg,#E8C254,#B5912D); color:#0E1A30; font-weight:700; }
+  .btn-gold:hover{ filter:brightness(1.08); }
+  .btn-ghost{ background:rgba(255,255,255,.06); color:#FDFBF7; border:1px solid rgba(212,175,55,.2); }
+  .btn-ghost:hover{ background:rgba(212,175,55,.12); }
+  .court-card{ background:linear-gradient(180deg,#15233F,#0E1A30); border:1px solid rgba(212,175,55,.18); }
+  .court-card.match{ border-left:4px solid var(--gold-500); }
+  .court-card.drill{ border-left:4px solid var(--cyan-400); }
+  .court-card.lesson{ border-left:4px solid var(--purple-400); }
+  .court-card.running{ box-shadow: inset 0 0 0 1px rgba(92,203,122,.35), 0 0 24px rgba(92,203,122,.08); }
+  .court-card.urgent{ animation: pulseR 1.1s infinite; }
+  @keyframes pulseR { 0%,100%{ box-shadow: inset 0 0 0 1px rgba(226,85,85,.55), 0 0 24px rgba(226,85,85,.18);} 50%{ box-shadow: inset 0 0 0 1px rgba(226,85,85,.85), 0 0 36px rgba(226,85,85,.28);} }
+  .chip{ display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; }
+  .chip-A{ background:rgba(212,175,55,.18); color:#E8C254; }
+  .chip-B{ background:rgba(91,169,245,.18); color:#9CC8F5; }
+  .chip-C{ background:rgba(180,180,180,.18); color:#E5E5E5; }
+  .chip-D{ background:rgba(160,120,90,.22); color:#D9B79A; }
+  .chip-초심{ background:rgba(255,255,255,.08); color:#CFCFCF; }
+  .chip-1A{ background:rgba(232,194,84,.28); color:#FFE08A; }
+  .chip-남{ background:rgba(91,169,245,.18); color:#9CC8F5; }
+  .chip-여{ background:rgba(255,138,178,.18); color:#FFB8D1; }
+  .tab-btn{ padding:10px 16px; border-radius:12px; font-weight:600; font-size:14px; transition: all .15s; }
+  .tab-btn.active{ background:linear-gradient(135deg,#E8C254,#B5912D); color:#0E1A30; }
+  .tab-btn:not(.active){ color:#CFC6B0; }
+  .tab-btn:not(.active):hover{ background:rgba(212,175,55,.08); color:#FDFBF7; }
+  .input{ background:rgba(7,15,28,.6); border:1px solid rgba(212,175,55,.22); border-radius:10px; padding:10px 12px; color:#FDFBF7; width:100%; }
+  .input:focus{ outline:none; border-color:#E8C254; }
+  .modal-bg{ position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(6px); z-index:60; }
+  .seg{ display:inline-flex; gap:4px; padding:4px; background:rgba(7,15,28,.5); border-radius:12px; border:1px solid rgba(212,175,55,.2); }
+  .seg button{ padding:6px 12px; border-radius:8px; font-size:13px; font-weight:600; color:#CFC6B0; }
+  .seg button.on{ background:linear-gradient(135deg,#E8C254,#B5912D); color:#0E1A30; }
+  .badge-stat{ background:rgba(7,15,28,.7); border:1px solid rgba(212,175,55,.18); border-radius:14px; padding:10px 14px; }
+  .step-card{ background:rgba(21,35,63,.55); border:1px solid rgba(212,175,55,.15); border-radius:16px; padding:16px; }
+  .wait-row{ background:rgba(7,15,28,.45); border:1px solid rgba(212,175,55,.12); border-radius:12px; }
+  .wait-row.warn{ border-color:rgba(232,194,84,.5); background:rgba(232,194,84,.06); }
+  .wait-row.danger{ border-color:rgba(226,85,85,.5); background:rgba(226,85,85,.08); }
+  .ret-star{ color:#E8C254; font-weight:800; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(212,175,55,.25); border-radius:8px; }
+  ::-webkit-scrollbar-track{ background:rgba(7,15,28,.3); }
+  /* drag-drop visual */
+  .drop-zone.over{ outline:2px dashed #E8C254; background:rgba(232,194,84,.08); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// =========================================================
+// 119명 회원 데이터 (KG클럽 2025-12-12 기준)
+// =========================================================
+const MEMBERS = [
+  {no:1,name:"조성용",gender:"남",age:77,year:1949,grade:"A"},
+  {no:2,name:"김천식",gender:"남",age:74,year:1952,grade:"C"},
+  {no:3,name:"김호회",gender:"남",age:72,year:1954,grade:"C"},
+  {no:4,name:"이창식",gender:"남",age:72,year:1954,grade:"D"},
+  {no:5,name:"조복행",gender:"남",age:72,year:1954,grade:"C"},
+  {no:6,name:"김학출",gender:"남",age:71,year:1955,grade:"A"},
+  {no:7,name:"신선애",gender:"여",age:71,year:1955,grade:"A"},
+  {no:8,name:"안상현",gender:"남",age:71,year:1955,grade:"A"},
+  {no:9,name:"손원희",gender:"남",age:70,year:1956,grade:"A"},
+  {no:10,name:"서옥수",gender:"남",age:69,year:1957,grade:"A"},
+  {no:11,name:"김경자",gender:"여",age:69,year:1957,grade:"A"},
+  {no:12,name:"정연화",gender:"여",age:67,year:1959,grade:"D"},
+  {no:13,name:"윤여용",gender:"남",age:67,year:1959,grade:"A"},
+  {no:14,name:"이동하",gender:"남",age:67,year:1959,grade:"D"},
+  {no:15,name:"손순영",gender:"여",age:67,year:1959,grade:"D"},
+  {no:16,name:"정낙영",gender:"남",age:65,year:1961,grade:"D"},
+  {no:17,name:"김 숙",gender:"여",age:65,year:1961,grade:"A"},
+  {no:18,name:"김상배",gender:"남",age:65,year:1961,grade:"C"},
+  {no:19,name:"이흥주",gender:"남",age:65,year:1961,grade:"A"},
+  {no:20,name:"정인숙",gender:"여",age:65,year:1961,grade:"A"},
+  {no:21,name:"송규성",gender:"남",age:64,year:1962,grade:"C"},
+  {no:22,name:"이창용",gender:"남",age:64,year:1962,grade:"B"},
+  {no:23,name:"박종주",gender:"남",age:64,year:1962,grade:"C"},
+  {no:24,name:"서동완",gender:"남",age:63,year:1963,grade:"C"},
+  {no:25,name:"한승연",gender:"남",age:63,year:1963,grade:"A"},
+  {no:26,name:"심태선",gender:"남",age:63,year:1963,grade:"C"},
+  {no:27,name:"조현숙",gender:"여",age:62,year:1964,grade:"A"},
+  {no:28,name:"김기환",gender:"남",age:61,year:1965,grade:"A"},
+  {no:29,name:"한동숙",gender:"여",age:61,year:1965,grade:"A"},
+  {no:30,name:"박경효",gender:"남",age:61,year:1965,grade:"D"},
+  {no:31,name:"오재완",gender:"여",age:61,year:1965,grade:"C"},
+  {no:32,name:"유현욱",gender:"남",age:61,year:1965,grade:"A"},
+  {no:33,name:"유재진",gender:"남",age:60,year:1966,grade:"A"},
+  {no:34,name:"유선숙",gender:"여",age:60,year:1966,grade:"A"},
+  {no:35,name:"조성필",gender:"남",age:60,year:1966,grade:"A"},
+  {no:36,name:"안재성",gender:"남",age:60,year:1966,grade:"A"},
+  {no:37,name:"김미숙",gender:"여",age:60,year:1966,grade:"C"},
+  {no:38,name:"김학곤",gender:"남",age:59,year:1967,grade:"초심"},
+  {no:39,name:"조철훈",gender:"남",age:59,year:1967,grade:"초심"},
+  {no:40,name:"임대혁",gender:"남",age:58,year:1968,grade:"A"},
+  {no:41,name:"김희중",gender:"남",age:58,year:1968,grade:"A"},
+  {no:42,name:"김삼규",gender:"남",age:58,year:1968,grade:"C"},
+  {no:43,name:"이영태",gender:"남",age:58,year:1968,grade:"A"},
+  {no:44,name:"최봉길",gender:"남",age:58,year:1968,grade:"A"},
+  {no:45,name:"김희연1",gender:"여",age:58,year:1968,grade:"1A"},
+  {no:46,name:"채은주",gender:"여",age:58,year:1968,grade:"C"},
+  {no:47,name:"노시환",gender:"남",age:58,year:1968,grade:"D"},
+  {no:48,name:"한수정",gender:"여",age:57,year:1969,grade:"C"},
+  {no:49,name:"노영우",gender:"남",age:57,year:1969,grade:"D"},
+  {no:50,name:"김희연2",gender:"여",age:56,year:1970,grade:"A"},
+  {no:51,name:"이현미",gender:"여",age:56,year:1970,grade:"A"},
+  {no:52,name:"김은경",gender:"여",age:56,year:1970,grade:"A"},
+  {no:53,name:"문 억",gender:"남",age:56,year:1970,grade:"D"},
+  {no:54,name:"조은호",gender:"남",age:56,year:1970,grade:"A"},
+  {no:55,name:"조민호",gender:"남",age:56,year:1970,grade:"B"},
+  {no:56,name:"김영수",gender:"남",age:55,year:1971,grade:"B"},
+  {no:57,name:"강남구",gender:"남",age:55,year:1971,grade:"A"},
+  {no:58,name:"정효숙",gender:"여",age:54,year:1972,grade:"D"},
+  {no:59,name:"지성현",gender:"남",age:54,year:1972,grade:"C"},
+  {no:60,name:"황상희",gender:"여",age:54,year:1972,grade:"A"},
+  {no:61,name:"최현성",gender:"남",age:54,year:1972,grade:"C"},
+  {no:62,name:"김미옥",gender:"여",age:53,year:1973,grade:"초심"},
+  {no:63,name:"최은이",gender:"여",age:52,year:1974,grade:"B"},
+  {no:64,name:"신인숙",gender:"여",age:52,year:1974,grade:"A"},
+  {no:65,name:"이용제",gender:"남",age:52,year:1974,grade:"A"},
+  {no:66,name:"이은희",gender:"여",age:52,year:1974,grade:"A"},
+  {no:67,name:"송빛누니",gender:"남",age:52,year:1974,grade:"초심"},
+  {no:68,name:"이정수",gender:"남",age:51,year:1975,grade:"A"},
+  {no:69,name:"최용삼",gender:"남",age:51,year:1975,grade:"D"},
+  {no:70,name:"류지항",gender:"남",age:51,year:1975,grade:"A"},
+  {no:71,name:"황경미",gender:"여",age:50,year:1976,grade:"B"},
+  {no:72,name:"김경렬",gender:"남",age:50,year:1976,grade:"A"},
+  {no:73,name:"배병현",gender:"남",age:50,year:1976,grade:"C"},
+  {no:74,name:"정미경",gender:"여",age:50,year:1976,grade:"초심"},
+  {no:75,name:"홍순건",gender:"남",age:50,year:1976,grade:"D"},
+  {no:76,name:"지윤호",gender:"남",age:49,year:1977,grade:"초심"},
+  {no:77,name:"양선화",gender:"여",age:49,year:1977,grade:"A"},
+  {no:78,name:"권지연",gender:"여",age:49,year:1977,grade:"B"},
+  {no:79,name:"현수미",gender:"여",age:49,year:1977,grade:"C"},
+  {no:80,name:"황유석",gender:"남",age:49,year:1977,grade:"초심"},
+  {no:81,name:"김동춘",gender:"여",age:48,year:1978,grade:"D"},
+  {no:82,name:"박 혁",gender:"남",age:48,year:1978,grade:"D"},
+  {no:83,name:"김원주",gender:"여",age:48,year:1978,grade:"초심"},
+  {no:84,name:"최연실",gender:"여",age:48,year:1978,grade:"A"},
+  {no:85,name:"박초휘",gender:"여",age:48,year:1978,grade:"C"},
+  {no:86,name:"원종우",gender:"남",age:47,year:1979,grade:"C"},
+  {no:87,name:"조희경",gender:"여",age:47,year:1979,grade:"B"},
+  {no:88,name:"김성훈",gender:"남",age:47,year:1979,grade:"D"},
+  {no:89,name:"이수현",gender:"여",age:47,year:1979,grade:"D"},
+  {no:90,name:"이승종",gender:"남",age:46,year:1980,grade:"A"},
+  {no:91,name:"송지영",gender:"여",age:46,year:1980,grade:"D"},
+  {no:92,name:"이자영",gender:"여",age:45,year:1981,grade:"A"},
+  {no:93,name:"이지은",gender:"여",age:45,year:1981,grade:"D"},
+  {no:94,name:"박민영",gender:"여",age:45,year:1981,grade:"D"},
+  {no:95,name:"김거영",gender:"남",age:45,year:1981,grade:"D"},
+  {no:96,name:"윤주연",gender:"여",age:45,year:1981,grade:"D"},
+  {no:97,name:"정유진",gender:"여",age:44,year:1982,grade:"A"},
+  {no:98,name:"김완수",gender:"남",age:43,year:1983,grade:"A"},
+  {no:99,name:"장 환",gender:"남",age:43,year:1983,grade:"D"},
+  {no:100,name:"조종표",gender:"남",age:43,year:1983,grade:"D"},
+  {no:101,name:"최하현",gender:"남",age:40,year:1986,grade:"C"},
+  {no:102,name:"최기덕",gender:"남",age:38,year:1988,grade:"C"},
+  {no:103,name:"신민재",gender:"남",age:36,year:1990,grade:"초심"},
+  {no:104,name:"이정빈",gender:"남",age:36,year:1990,grade:"B"},
+  {no:105,name:"최규완",gender:"남",age:35,year:1991,grade:"C"},
+  {no:106,name:"소병욱",gender:"남",age:35,year:1991,grade:"초심"},
+  {no:107,name:"김우성",gender:"남",age:34,year:1992,grade:"C"},
+  {no:108,name:"윤성진",gender:"여",age:33,year:1993,grade:"초심"},
+  {no:109,name:"조민수",gender:"여",age:32,year:1994,grade:"초심"},
+  {no:110,name:"이다민",gender:"여",age:32,year:1994,grade:"초심"},
+  {no:111,name:"설누리",gender:"여",age:31,year:1995,grade:"D"},
+  {no:112,name:"안성무",gender:"남",age:31,year:1995,grade:"초심"},
+  {no:113,name:"윤혁빈",gender:"남",age:30,year:1996,grade:"A"},
+  {no:114,name:"안광혁",gender:"남",age:30,year:1996,grade:"D"},
+  {no:115,name:"곽혜원",gender:"여",age:29,year:1997,grade:"초심"},
+  {no:116,name:"박현용",gender:"남",age:29,year:1997,grade:"C"},
+  {no:117,name:"홍성택",gender:"남",age:29,year:1997,grade:"D"},
+  {no:118,name:"박소인",gender:"여",age:28,year:1998,grade:"D"},
+  {no:119,name:"장지현",gender:"여",age:20,year:2006,grade:"D"}
+];
+
+// =========================================================
+// 상수
+// =========================================================
+const PREFIX = "kgp3_";
+const GAME_DURATION = 15 * 60; // 15분
+const GUEST_LIMIT = 5;
+const COURTS = [
+  { id:1, type:"match", label:"코트 1" },
+  { id:2, type:"match", label:"코트 2" },
+  { id:3, type:"match", label:"코트 3" },
+  { id:4, type:"match", label:"코트 4" },
+  { id:5, type:"drill", label:"코트 5 · 자유난타" },
+  { id:6, type:"lesson", label:"코트 6 · 레슨" },
+];
+const GRADE_ORDER = ['A','1A','B','C','D','초심'];
+const gradeNum = g => { const i = GRADE_ORDER.indexOf(g); return i<0 ? 5 : i; };
+
+// =========================================================
+// localStorage 헬퍼
+// =========================================================
+const load = (k, d) => {
+  try { const v = localStorage.getItem(PREFIX+k); return v ? JSON.parse(v) : d; } catch { return d; }
+};
+const save = (k, v) => { try { localStorage.setItem(PREFIX+k, JSON.stringify(v)); } catch {} };
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+// =========================================================
+// 비프음 (v2)
+// =========================================================
+let audioCtx = null;
+const beep = (freq=880, dur=0.15, vol=0.18) => {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type='sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0, audioCtx.currentTime);
+    g.gain.linearRampToValueAtTime(vol, audioCtx.currentTime+0.02);
+    g.gain.linearRampToValueAtTime(0, audioCtx.currentTime+dur);
+    o.start(); o.stop(audioCtx.currentTime+dur+0.05);
+  } catch {}
+};
+
+// =========================================================
+// 매칭 점수 (v1의 100점 알고리즘 + v2 4가지 모드)
+// =========================================================
+function calcScore(four, todayGames){
+  if(!four || four.length !== 4) return 0;
+  let s = 0;
+  // 1. 급수 분산 (35)
+  const grades = four.map(p=>gradeNum(p.grade));
+  const avg = grades.reduce((a,b)=>a+b,0)/4;
+  const variance = grades.reduce((x,g)=>x+(g-avg)**2,0)/4;
+  if(variance < 0.1) s += 35;
+  else if(variance < 0.5) s += 28;
+  else if(variance < 1.0) s += 19;
+  else if(variance < 2.0) s += 10;
+  else s += 3;
+  // 2. 성비 (20)
+  const m = four.filter(p=>p.gender==='남').length;
+  const f = 4-m;
+  const d = Math.abs(m-f);
+  if(d===0) s += 20; else if(d===2) s += 14; else s += 6;
+  // 3. 연령대 분산 (20)
+  const ys = four.filter(p=>p.year).map(p=>p.year);
+  if(ys.length>=2){
+    const yA = ys.reduce((a,b)=>a+b,0)/ys.length;
+    const yV = ys.reduce((x,y)=>x+(y-yA)**2,0)/ys.length;
+    if(yV<6.25) s += 20;
+    else if(yV<25) s += 16;
+    else if(yV<56) s += 11;
+    else if(yV<100) s += 6;
+    else s += 2;
+  } else s += 14;
+  // 4. 게임 수 균등 (15)
+  const gms = four.map(p => (todayGames[p.key]||0));
+  const aG = gms.reduce((a,b)=>a+b,0)/4;
+  if(aG===0) s += 15;
+  else if(aG<=1) s += 13;
+  else if(aG<=2) s += 9;
+  else if(aG<=3) s += 5;
+  else s += 2;
+  // 5. 대기시간 가중치 (10)
+  const maxW = Math.max(0, ...four.map(p=>p.waitedSec||0));
+  if(maxW>=30*60) s += 10;
+  else if(maxW>=15*60) s += 7;
+  else if(maxW>=5*60) s += 4;
+  return Math.round(s);
+}
+
+const scoreStars = s => s>=85?'★★★★★': s>=70?'★★★★': s>=55?'★★★': s>=40?'★★':'★';
+
+// 조합 nCr (k=4)
+function combinations(arr, k){
+  if(k > arr.length) return [];
+  const out = [];
+  const idx = Array.from({length:k},(_,i)=>i);
+  const n = arr.length;
+  while(true){
+    out.push(idx.map(i=>arr[i]));
+    let i = k-1;
+    while(i>=0 && idx[i] === n - k + i) i--;
+    if(i<0) break;
+    idx[i]++;
+    for(let j=i+1; j<k; j++) idx[j] = idx[j-1]+1;
+  }
+  return out;
+}
+
+// 매칭 모드별 4인 추출 (v2: 공정/균형/혼복/선착순)
+function pickFour(queue, mode, todayGames){
+  if(queue.length < 4) return null;
+  const pool = queue.slice(0, Math.min(12, queue.length)); // 상위 12명
+  if(mode==='fifo') return queue.slice(0,4);
+  if(mode==='fair'){
+    // 게임 횟수 적은 순 + 대기 오래된 순
+    const sorted = [...queue].sort((a,b)=>{
+      const ga = todayGames[a.key]||0, gb = todayGames[b.key]||0;
+      if(ga !== gb) return ga - gb;
+      return a.since - b.since;
+    });
+    return sorted.slice(0,4);
+  }
+  if(mode==='mixed'){
+    // 남2+여2 우선
+    const men = queue.filter(p=>p.gender==='남').slice(0,4);
+    const women = queue.filter(p=>p.gender==='여').slice(0,4);
+    if(men.length>=2 && women.length>=2) return [...men.slice(0,2), ...women.slice(0,2)];
+    return queue.slice(0,4);
+  }
+  if(mode==='balanced' || mode==='smart'){
+    // 상위 12명 중 최대 200조합 평가
+    const combos = combinations(pool, 4);
+    const evals = combos.slice(0, 200).map(c=>({c, s:calcScore(c, todayGames)}));
+    evals.sort((a,b)=>b.s-a.s);
+    return evals.length ? evals[0].c : null;
+  }
+  return queue.slice(0,4);
+}
+
+// =========================================================
+// 아이콘
+// =========================================================
+const I = ({d, className="w-5 h-5"}) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d={d}/>
+  </svg>
+);
+const Icon = {
+  court: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14M3 12h18"/></svg>,
+  users: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  qr: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v3M14 21h3M21 18v3"/></svg>,
+  chart: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+  book: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
+  play: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><polygon points="6,4 20,12 6,20"/></svg>,
+  stop: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>,
+  bell: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+  star: <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  cog: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  msg: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
+};
+
+// =========================================================
+// 최상위 컴포넌트
+// =========================================================
+function App(){
+  const [tab, setTab] = useState("main");
+  const [members, setMembers] = useState(()=> load('members', MEMBERS));
+  const [deleted, setDeleted] = useState(()=> load('deleted', []));
+  const [queue, setQueue] = useState(()=> load('queue', []));
+  const [courts, setCourts] = useState(()=> load('courts', COURTS.map(c=>({...c, players:[], startedAt:null, endsAt:null, gameNo:0}))));
+  const [history, setHistory] = useState(()=> load('history', []));
+  const [nextGameNo, setNextGameNo] = useState(()=> load('nextGameNo', 1));
+  const [guestSeq, setGuestSeq] = useState(()=> load('guestSeq', 1));
+  const [mode, setMode] = useState(()=> load('mode', 'smart')); // smart=balanced+age
+  const [now, setNow] = useState(Date.now());
+  const [toast, setToast] = useState(null);
+  const [date, setDate] = useState(()=> load('date', todayStr()));
+
+  // 매일 자정 리셋
+  useEffect(()=>{
+    const t = todayStr();
+    if(t !== date){
+      setQueue([]); setCourts(COURTS.map(c=>({...c, players:[], startedAt:null, endsAt:null, gameNo:0})));
+      setHistory([]); setNextGameNo(1); setGuestSeq(1); setDate(t);
+    }
+  }, []);
+
+  // tick (1초)
+  useEffect(()=>{
+    const t = setInterval(()=> setNow(Date.now()), 1000);
+    return ()=> clearInterval(t);
+  },[]);
+
+  // 카운트다운 비프
+  const prevRemain = useRef({});
+  useEffect(()=>{
+    courts.forEach(c=>{
+      if(!c.endsAt) return;
+      const remain = Math.floor((c.endsAt - now)/1000);
+      const prev = prevRemain.current[c.id];
+      if(prev === undefined){ prevRemain.current[c.id] = remain; return; }
+      if(prev > 60 && remain <= 60 && remain > 55) beep(880, 0.15, 0.18);
+      if(prev > 0 && remain <= 0 && remain > -3) beep(660, 0.4, 0.22);
+      prevRemain.current[c.id] = remain;
+    });
+  }, [now, courts]);
+
+  // 저장
+  useEffect(()=> save('members', members), [members]);
+  useEffect(()=> save('deleted', deleted), [deleted]);
+  useEffect(()=> save('queue', queue), [queue]);
+  useEffect(()=> save('courts', courts), [courts]);
+  useEffect(()=> save('history', history), [history]);
+  useEffect(()=> save('nextGameNo', nextGameNo), [nextGameNo]);
+  useEffect(()=> save('guestSeq', guestSeq), [guestSeq]);
+  useEffect(()=> save('mode', mode), [mode]);
+  useEffect(()=> save('date', date), [date]);
+
+  const showToast = (msg, t=2500) => { setToast(msg); setTimeout(()=>setToast(null), t); };
+
+  // 오늘 게임 수 카운트 (key 기반)
+  const todayGames = useMemo(()=>{
+    const m = {};
+    history.forEach(g => g.players.forEach(p => { m[p.key] = (m[p.key]||0) + 1; }));
+    return m;
+  }, [history]);
+
+  // 활성 회원 (삭제되지 않은 회원)
+  const activeMembers = useMemo(()=> members.filter(m => !deleted.includes(m.no)), [members, deleted]);
+
+  // 게스트 카운트 (오늘)
+  const guestCountToday = queue.filter(q=>q.isGuest).length + history.flatMap(g=>g.players).filter(p=>p.isGuest).length;
+
+  // 대기열에 추가
+  const addToQueue = (m) => {
+    // 중복 체크
+    if(queue.some(q=>q.key === m.key)) { showToast(`${m.name}님은 이미 대기 중입니다.`); return false; }
+    // 게임 진행 중 체크
+    if(courts.some(c=>c.players.some(p=>p.key===m.key))){ showToast(`${m.name}님은 코트에서 경기 중입니다.`); return false; }
+    setQueue(q => [...q, { ...m, since: Date.now(), isReturnee: false }]);
+    showToast(`✓ ${m.name}님 입장`);
+    return true;
+  };
+
+  // 대기열에서 제거
+  const removeFromQueue = (key) => setQueue(q => q.filter(p => p.key !== key));
+
+  // 매칭 실행 → 코트 배정
+  const matchToCourt = (courtId) => {
+    const court = courts.find(c=>c.id===courtId);
+    if(!court || court.type!=='match') { showToast('일반 매칭 코트(1~4)에만 배정 가능합니다.'); return; }
+    if(court.players.length>0) { showToast('이미 경기 중입니다.'); return; }
+    const qWithWait = queue.map(p=>({...p, waitedSec: Math.floor((Date.now()-p.since)/1000)}));
+    const four = pickFour(qWithWait, mode, todayGames);
+    if(!four || four.length<4){ showToast('대기열에 4명 이상 필요합니다.'); return; }
+    const startedAt = Date.now();
+    const endsAt = startedAt + GAME_DURATION*1000;
+    const gameNo = nextGameNo;
+    setCourts(cs => cs.map(c => c.id===courtId ? { ...c, players:four, startedAt, endsAt, gameNo } : c));
+    setQueue(q => q.filter(p => !four.some(f=>f.key===p.key)));
+    setNextGameNo(n=>n+1);
+    showToast(`코트 ${courtId}에 ${four.map(p=>p.name).join(', ')} 배정`);
+  };
+
+  // 경기 종료
+  const endGame = (courtId) => {
+    const c = courts.find(x=>x.id===courtId);
+    if(!c || c.players.length===0) return;
+    // 히스토리 기록
+    setHistory(h => [{
+      gameNo: c.gameNo, courtId, players: c.players,
+      startedAt: c.startedAt, endedAt: Date.now(), score: calcScore(c.players, todayGames)
+    }, ...h].slice(0, 200));
+    setCourts(cs => cs.map(x => x.id===courtId ? {...x, players:[], startedAt:null, endsAt:null, gameNo:0} : x));
+    showToast(`코트 ${courtId} 경기 종료`);
+  };
+
+  // 코트에서 큐로 (선수 빼기)
+  const courtToQueue = (courtId) => {
+    const c = courts.find(x=>x.id===courtId);
+    if(!c) return;
+    setQueue(q => [...q, ...c.players.map(p=>({...p, since: Date.now(), isReturnee:true}))]);
+    setCourts(cs => cs.map(x => x.id===courtId ? {...x, players:[], startedAt:null, endsAt:null, gameNo:0} : x));
+  };
+
+  // 코트 타입 변경 (난타/레슨/일반 전환)
+  const cycleCourtType = (courtId) => {
+    setCourts(cs => cs.map(x => {
+      if(x.id !== courtId) return x;
+      if(x.players.length>0) { showToast('진행 중인 경기를 먼저 종료하세요.'); return x; }
+      const order = ['match','drill','lesson'];
+      const next = order[(order.indexOf(x.type)+1) % 3];
+      return { ...x, type: next, label: COURTS.find(c=>c.id===courtId).label.replace(/·.*$/, (next==='match'?'':`· ${next==='drill'?'자유난타':'레슨'}`)).trim() || `코트 ${courtId}` };
+    }));
+  };
+
+  // 게스트 등록
+  const addGuest = (name, gender, grade) => {
+    if(guestCountToday >= GUEST_LIMIT){ showToast(`게스트는 하루 ${GUEST_LIMIT}명까지만 가능합니다.`); return; }
+    const g = {
+      no: -guestSeq, name: name || `게스트${guestSeq}`, gender, age:35, year:1990, grade,
+      isGuest: true, key: `G${guestSeq}`
+    };
+    setGuestSeq(s=>s+1);
+    addToQueue(g);
+  };
+
+  // 회원 입장 (개별)
+  const checkIn = (m) => addToQueue({ ...m, key: `M${m.no}`, isGuest:false });
+
+  // 드래그앤드롭 Override (2인 강제결합 등)
+  const onDropOnCourt = (courtId, draggedKeys) => {
+    const c = courts.find(x=>x.id===courtId);
+    if(!c || c.type !== 'match'){ showToast('일반 매칭 코트에만 배정 가능합니다.'); return; }
+    if(c.players.length>0){ showToast('이미 경기 중입니다.'); return; }
+    const picked = queue.filter(p => draggedKeys.includes(p.key));
+    if(picked.length !== 4){ showToast(`정확히 4명을 선택해 드롭하세요. (현재 ${picked.length}명)`); return; }
+    const startedAt = Date.now(), endsAt = startedAt + GAME_DURATION*1000;
+    setCourts(cs => cs.map(x => x.id===courtId ? {...x, players:picked, startedAt, endsAt, gameNo:nextGameNo} : x));
+    setQueue(q => q.filter(p => !draggedKeys.includes(p.key)));
+    setNextGameNo(n=>n+1);
+    showToast(`강제 배정 완료: ${picked.map(p=>p.name).join(', ')}`);
+  };
+
+  return (
+    <div className="min-h-screen">
+      <Header tab={tab} setTab={setTab} stats={{queue:queue.length, running:courts.filter(c=>c.players.length>0).length, done:history.length, guests:guestCountToday}} />
+      <main className="max-w-7xl mx-auto px-3 sm:px-5 pb-24 pt-4">
+        {tab==='main' && <MainView
+          courts={courts} queue={queue} now={now}
+          mode={mode} setMode={setMode}
+          matchToCourt={matchToCourt} endGame={endGame} courtToQueue={courtToQueue}
+          cycleCourtType={cycleCourtType}
+          removeFromQueue={removeFromQueue} onDropOnCourt={onDropOnCourt}
+          showToast={showToast} todayGames={todayGames}
+        />}
+        {tab==='intake' && <IntakeView
+          activeMembers={activeMembers} checkIn={checkIn} addGuest={addGuest}
+          guestCountToday={guestCountToday} showToast={showToast}
+        />}
+        {tab==='members' && <MembersView
+          members={members} setMembers={setMembers}
+          deleted={deleted} setDeleted={setDeleted}
+        />}
+        {tab==='stats' && <StatsView history={history} courts={courts} queue={queue} todayGames={todayGames} activeMembers={activeMembers}/>}
+        {tab==='guide' && <GuideView/>}
+      </main>
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 glass luxury-shadow px-5 py-3 rounded-2xl text-sm font-semibold z-50">
+          {toast}
+        </div>
+      )}
+      <footer className="text-center text-xs text-[#7E8AA0] py-6">
+        KG 배드민턴 PRO v3 · v1+v2 통합 · localStorage 단독 동작 · © 2026 KG 클럽
+      </footer>
+    </div>
+  );
+}
+
+// =========================================================
+// 헤더 + 탭
+// =========================================================
+function Header({tab, setTab, stats}){
+  const tabs = [
+    { id:'main', label:'코트·매칭', icon:Icon.court },
+    { id:'intake', label:'도착인증', icon:Icon.qr },
+    { id:'members', label:'회원관리', icon:Icon.users },
+    { id:'stats', label:'통계', icon:Icon.chart },
+    { id:'guide', label:'운용가이드', icon:Icon.book },
+  ];
+  return (
+    <header className="sticky top-0 z-40 glass luxury-shadow border-b border-[rgba(212,175,55,0.18)]">
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 py-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl btn-gold flex items-center justify-center text-[#0E1A30] font-black text-lg">KG</div>
+            <div>
+              <div className="font-black text-lg leading-tight gold-grad">KG 배드민턴 PRO <span className="text-[10px] align-top">v3</span></div>
+              <div className="text-[11px] text-[#9CA3B8]">스마트 매칭 · 통합판</div>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-wrap text-xs">
+            <span className="badge-stat"><b className="gold-text">{stats.queue}</b> 대기</span>
+            <span className="badge-stat"><b className="gold-text">{stats.running}</b> 진행</span>
+            <span className="badge-stat"><b className="gold-text">{stats.done}</b> 완료</span>
+            <span className="badge-stat"><b className="gold-text">{stats.guests}/{GUEST_LIMIT}</b> 게스트</span>
+          </div>
+        </div>
+        <nav className="mt-3 flex gap-1 overflow-x-auto -mx-1 px-1">
+          {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} className={`tab-btn flex items-center gap-2 whitespace-nowrap ${tab===t.id?'active':''}`}>
+              {t.icon}<span>{t.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+// =========================================================
+// 메인 뷰 (코트 + 대기열)
+// =========================================================
+function MainView({courts, queue, now, mode, setMode, matchToCourt, endGame, courtToQueue, cycleCourtType, removeFromQueue, onDropOnCourt, showToast, todayGames}){
+  const [selected, setSelected] = useState(new Set()); // 드래그 대신 체크박스 다중선택
+  const toggleSel = (key) => setSelected(s => {
+    const n = new Set(s);
+    if(n.has(key)) n.delete(key); else n.add(key);
+    return n;
+  });
+  const assignSelected = (courtId) => {
+    onDropOnCourt(courtId, [...selected]);
+    setSelected(new Set());
+  };
+  return (
+    <div className="grid lg:grid-cols-3 gap-4">
+      {/* 좌측: 매칭 + 코트 */}
+      <div className="lg:col-span-2 space-y-3">
+        <div className="glass luxury-shadow rounded-2xl p-3 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-[#CFC6B0]">매칭 알고리즘</span>
+            <div className="seg">
+              {[
+                {id:'smart', label:'스마트 (균형+연령)'},
+                {id:'fair', label:'공정'},
+                {id:'mixed', label:'혼복'},
+                {id:'fifo', label:'선착순'},
+              ].map(o=>(
+                <button key={o.id} className={mode===o.id?'on':''} onClick={()=>setMode(o.id)}>{o.label}</button>
+              ))}
+            </div>
+          </div>
+          <div className="text-[11px] text-[#9CA3B8]">
+            {mode==='smart' && '급수·성비·연령·게임수·대기 종합 100점 평가 (상위 12명 중 최대 200조합)'}
+            {mode==='fair' && '오늘 게임 적은 순 + 대기 오래된 순'}
+            {mode==='mixed' && '남2 + 여2 우선'}
+            {mode==='fifo' && '대기열 앞 4명 즉시 배정'}
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          {courts.map(c=>(
+            <CourtCard key={c.id} c={c} now={now}
+              onStart={()=>matchToCourt(c.id)}
+              onEnd={()=>endGame(c.id)}
+              onReturn={()=>courtToQueue(c.id)}
+              onCycle={()=>cycleCourtType(c.id)}
+              onAssignSelected={selected.size===4 ? ()=>assignSelected(c.id) : null}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* 우측: 대기열 */}
+      <aside className="glass luxury-shadow rounded-2xl p-3 lg:max-h-[calc(100vh-160px)] lg:overflow-auto">
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-black gold-text flex items-center gap-2">{Icon.users}<span>대기열 ({queue.length})</span></div>
+          <div className="text-[11px] text-[#9CA3B8]">{selected.size>0 ? `${selected.size}/4 선택` : '체크박스로 4명 선택 후 코트 배정'}</div>
+        </div>
+        {queue.length===0 ? (
+          <div className="text-center py-10 text-[#9CA3B8] text-sm">대기 중인 회원이 없습니다.<br/>도착인증 탭에서 입장 처리하세요.</div>
+        ) : (
+          <ul className="space-y-2">
+            {queue.map((p,i)=>{
+              const waitMin = Math.floor((now - p.since)/60000);
+              const cls = waitMin>=10 ? 'danger' : waitMin>=5 ? 'warn' : '';
+              const isSel = selected.has(p.key);
+              return (
+                <li key={p.key} className={`wait-row ${cls} p-2.5 flex items-center gap-2`}>
+                  <input type="checkbox" checked={isSel} onChange={()=>toggleSel(p.key)} className="w-5 h-5 accent-amber-400" />
+                  <span className="text-xs text-[#9CA3B8] w-6 text-center">{i+1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-sm truncate">{p.name}</span>
+                      {p.isReturnee && <span className="ret-star text-xs">★</span>}
+                      {p.isGuest && <span className="chip chip-D">G</span>}
+                      <span className={`chip chip-${p.gender}`}>{p.gender}</span>
+                      <span className={`chip chip-${p.grade}`}>{p.grade}</span>
+                    </div>
+                    <div className="text-[11px] text-[#9CA3B8] mt-0.5">
+                      {p.age && `${p.age}세 · `}오늘 {todayGames[p.key]||0}게임 · 대기 {waitMin}분
+                    </div>
+                  </div>
+                  <button onClick={()=>removeFromQueue(p.key)} className="text-[#9CA3B8] hover:text-red-400 p-1">{Icon.trash}</button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+// =========================================================
+// 코트 카드
+// =========================================================
+function CourtCard({c, now, onStart, onEnd, onReturn, onCycle, onAssignSelected}){
+  const remainSec = c.endsAt ? Math.max(0, Math.floor((c.endsAt - now)/1000)) : 0;
+  const urgent = c.endsAt && remainSec <= 60 && remainSec > 0;
+  const running = c.players.length>0;
+  const mm = String(Math.floor(remainSec/60)).padStart(2,'0');
+  const ss = String(remainSec%60).padStart(2,'0');
+
+  return (
+    <div className={`court-card luxury-shadow rounded-2xl p-3 ${c.type} ${running?'running':''} ${urgent?'urgent':''}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-black">{c.label}</span>
+          {c.type==='match' && <span className="chip chip-A">일반</span>}
+          {c.type==='drill' && <span className="chip" style={{background:'rgba(91,226,217,0.18)', color:'#5BE2D9'}}>난타</span>}
+          {c.type==='lesson' && <span className="chip" style={{background:'rgba(181,156,255,0.18)', color:'#B59CFF'}}>레슨</span>}
+        </div>
+        <button onClick={onCycle} className="text-[#9CA3B8] hover:text-amber-400" title="코트 타입 전환">{Icon.cog}</button>
+      </div>
+
+      <div className="min-h-[88px]">
+        {running ? (
+          <>
+            <ul className="grid grid-cols-2 gap-1 mb-2">
+              {c.players.map(p=>(
+                <li key={p.key} className="text-xs px-2 py-1 rounded-lg bg-[rgba(7,15,28,0.5)]">
+                  <span className="font-bold">{p.name}</span>{p.isReturnee && <span className="ret-star ml-1">★</span>}
+                  <span className="text-[#9CA3B8] ml-1">{p.gender} {p.grade}</span>
+                </li>
+              ))}
+            </ul>
+            {c.type==='match' && (
+              <div className={`text-center text-2xl font-black tabular-nums ${urgent?'text-red-400':remainSec<=180?'gold-text':''}`}>{mm}:{ss}</div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-4 text-sm text-[#9CA3B8]">비어 있음</div>
+        )}
+      </div>
+
+      <div className="flex gap-1.5 mt-2">
+        {c.type==='match' && !running && (
+          <button onClick={onStart} className="btn-gold rounded-lg px-3 py-2 text-xs flex-1 flex items-center justify-center gap-1">{Icon.play}자동 매칭</button>
+        )}
+        {onAssignSelected && c.type==='match' && !running && (
+          <button onClick={onAssignSelected} className="btn-ghost rounded-lg px-3 py-2 text-xs flex-1">선택4명 강제배정</button>
+        )}
+        {running && (
+          <>
+            <button onClick={onEnd} className="btn-gold rounded-lg px-3 py-2 text-xs flex-1 flex items-center justify-center gap-1">{Icon.stop}종료</button>
+            <button onClick={onReturn} className="btn-ghost rounded-lg px-3 py-2 text-xs">대기열로</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// 도착인증 (QR 스캔 + 수동 검색)
+// =========================================================
+function IntakeView({activeMembers, checkIn, addGuest, guestCountToday, showToast}){
+  const [search, setSearch] = useState('');
+  const [scannerOn, setScannerOn] = useState(false);
+  const scannerRef = useRef(null);
+  const html5Ref = useRef(null);
+
+  // QR 스캔
+  useEffect(()=>{
+    if(scannerOn){
+      const id = "qr-scanner-region";
+      if(!document.getElementById(id)) return;
+      try {
+        const q = new Html5Qrcode(id);
+        html5Ref.current = q;
+        q.start({facingMode:"environment"}, {fps:10, qrbox:{width:240, height:240}},
+          (decoded)=>{
+            const m = decoded.match(/KG3:(\d+)/) || decoded.match(/KGBM:(\d+)/);
+            if(m){
+              const no = parseInt(m[1],10);
+              const mem = activeMembers.find(x=>x.no===no);
+              if(mem){
+                checkIn(mem);
+                q.pause();
+                setTimeout(()=>{ try{ q.resume(); }catch{} }, 1500);
+              } else showToast('등록되지 않은 회원입니다.');
+            }
+          },
+          ()=>{}
+        ).catch(e => showToast('카메라 권한이 필요합니다.'));
+      } catch(e){ showToast('스캐너 시작 실패'); }
+      return ()=>{
+        try { if(html5Ref.current){ html5Ref.current.stop().then(()=>html5Ref.current.clear()); html5Ref.current=null; } } catch {}
+      };
+    }
+  }, [scannerOn]);
+
+  const filtered = useMemo(()=>{
+    if(!search.trim()) return activeMembers.slice(0,30);
+    const s = search.trim();
+    return activeMembers.filter(m => m.name.includes(s) || String(m.no).includes(s)).slice(0,30);
+  }, [search, activeMembers]);
+
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <div className="glass luxury-shadow rounded-2xl p-4">
+        <h3 className="font-black gold-text mb-3 flex items-center gap-2">{Icon.qr}<span>QR 도착인증</span></h3>
+        {!scannerOn ? (
+          <div className="text-center py-8">
+            <p className="text-sm text-[#CFC6B0] mb-4">회원증 QR을 카메라로 비추세요.<br/>(KG3:번호 형식 자동 인식)</p>
+            <button onClick={()=>setScannerOn(true)} className="btn-gold rounded-xl px-6 py-3 font-bold">스캐너 시작</button>
+          </div>
+        ) : (
+          <>
+            <div id="qr-scanner-region" ref={scannerRef} style={{width:'100%', maxWidth:340, margin:'0 auto'}}></div>
+            <button onClick={()=>setScannerOn(false)} className="btn-ghost rounded-xl px-4 py-2 mt-3 w-full">스캐너 중지</button>
+          </>
+        )}
+      </div>
+
+      <div className="glass luxury-shadow rounded-2xl p-4">
+        <h3 className="font-black gold-text mb-3 flex items-center gap-2">{Icon.users}<span>수동 입장</span></h3>
+        <input type="text" placeholder="이름 또는 번호 검색" value={search} onChange={e=>setSearch(e.target.value)} className="input mb-3"/>
+        <div className="max-h-[300px] overflow-auto space-y-1.5">
+          {filtered.map(m=>(
+            <button key={m.no} onClick={()=>checkIn(m)} className="w-full text-left p-2 rounded-lg hover:bg-amber-500/10 flex items-center justify-between border border-transparent hover:border-amber-500/30">
+              <span className="text-sm"><b>{m.no}</b>. {m.name}</span>
+              <span className="flex gap-1"><span className={`chip chip-${m.gender}`}>{m.gender}</span><span className={`chip chip-${m.grade}`}>{m.grade}</span></span>
+            </button>
+          ))}
+          {filtered.length===0 && <div className="text-center text-[#9CA3B8] py-6 text-sm">검색 결과 없음</div>}
+        </div>
+        <GuestForm onAdd={addGuest} count={guestCountToday}/>
+      </div>
+    </div>
+  );
+}
+
+function GuestForm({onAdd, count}){
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState('남');
+  const [grade, setGrade] = useState('B');
+  return (
+    <div className="mt-4 pt-4 border-t border-amber-500/20">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="font-bold text-sm gold-text">게스트 등록</h4>
+        <span className="text-[11px] text-[#9CA3B8]">{count}/{GUEST_LIMIT} 사용</span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <input type="text" placeholder="이름" value={name} onChange={e=>setName(e.target.value)} className="input col-span-3"/>
+        <select value={gender} onChange={e=>setGender(e.target.value)} className="input">
+          <option>남</option><option>여</option>
+        </select>
+        <select value={grade} onChange={e=>setGrade(e.target.value)} className="input">
+          {GRADE_ORDER.map(g=><option key={g}>{g}</option>)}
+        </select>
+        <button onClick={()=>{ onAdd(name, gender, grade); setName(''); }} disabled={count>=GUEST_LIMIT}
+          className={`rounded-lg ${count>=GUEST_LIMIT?'bg-gray-600 text-gray-300':'btn-gold'} font-bold text-sm`}>등록</button>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// 회원관리 (CRUD + QR 출력)
+// =========================================================
+function MembersView({members, setMembers, deleted, setDeleted}){
+  const [editing, setEditing] = useState(null); // member or null
+  const [search, setSearch] = useState('');
+  const [qrFor, setQrFor] = useState(null);
+
+  const visible = useMemo(()=>{
+    const s = search.trim();
+    return members.filter(m => !deleted.includes(m.no))
+      .filter(m => !s || m.name.includes(s) || String(m.no).includes(s))
+      .sort((a,b)=>a.no - b.no);
+  }, [members, deleted, search]);
+
+  const save = (m) => {
+    if(editing && editing.no){
+      setMembers(ms => ms.map(x => x.no===m.no ? m : x));
+    } else {
+      const maxNo = Math.max(0, ...members.map(x=>x.no));
+      setMembers(ms => [...ms, {...m, no:maxNo+1}]);
+    }
+    setEditing(null);
+  };
+  const remove = (no) => {
+    if(!confirm('이 회원을 삭제하시겠습니까?')) return;
+    setDeleted(d => [...d, no]);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="glass luxury-shadow rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+        <input type="text" placeholder="이름 또는 번호 검색" value={search} onChange={e=>setSearch(e.target.value)} className="input flex-1 min-w-[200px]"/>
+        <button onClick={()=>setEditing({name:'',gender:'남',age:40,year:1985,grade:'B'})} className="btn-gold rounded-lg px-4 py-2 font-bold text-sm flex items-center gap-1">{Icon.plus}회원 추가</button>
+        <span className="text-xs text-[#9CA3B8]">총 {visible.length}명</span>
+      </div>
+      <div className="glass luxury-shadow rounded-2xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-[rgba(7,15,28,0.6)] text-[#CFC6B0]">
+            <tr><th className="py-2 px-3 text-left">번호</th><th className="text-left">이름</th><th>성별</th><th>나이</th><th>급수</th><th></th></tr>
+          </thead>
+          <tbody>
+            {visible.map(m=>(
+              <tr key={m.no} className="border-t border-amber-500/10 hover:bg-amber-500/5">
+                <td className="py-2 px-3 font-mono text-xs">{m.no}</td>
+                <td className="font-bold">{m.name}</td>
+                <td className="text-center"><span className={`chip chip-${m.gender}`}>{m.gender}</span></td>
+                <td className="text-center text-[#CFC6B0]">{m.age}</td>
+                <td className="text-center"><span className={`chip chip-${m.grade}`}>{m.grade}</span></td>
+                <td className="text-right pr-3">
+                  <button onClick={()=>setQrFor(m)} className="text-amber-400 text-xs mr-2 hover:underline">QR</button>
+                  <button onClick={()=>setEditing(m)} className="text-blue-400 text-xs mr-2 hover:underline">수정</button>
+                  <button onClick={()=>remove(m.no)} className="text-red-400 text-xs hover:underline">삭제</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editing && <MemberModal m={editing} onClose={()=>setEditing(null)} onSave={save}/>}
+      {qrFor && <QRModal m={qrFor} onClose={()=>setQrFor(null)}/>}
+    </div>
+  );
+}
+
+function MemberModal({m, onClose, onSave}){
+  const [f, setF] = useState({...m});
+  return (
+    <div className="modal-bg flex items-center justify-center p-4" onClick={onClose}>
+      <div className="glass luxury-shadow rounded-2xl p-6 max-w-md w-full" onClick={e=>e.stopPropagation()}>
+        <h3 className="font-black gold-text text-lg mb-4">{m.no ? `회원 수정 #${m.no}` : '신규 회원'}</h3>
+        <div className="space-y-3">
+          <input type="text" placeholder="이름" className="input" value={f.name} onChange={e=>setF({...f,name:e.target.value})}/>
+          <div className="grid grid-cols-2 gap-2">
+            <select className="input" value={f.gender} onChange={e=>setF({...f,gender:e.target.value})}><option>남</option><option>여</option></select>
+            <select className="input" value={f.grade} onChange={e=>setF({...f,grade:e.target.value})}>{GRADE_ORDER.map(g=><option key={g}>{g}</option>)}</select>
+            <input type="number" placeholder="나이" className="input" value={f.age} onChange={e=>setF({...f,age:+e.target.value})}/>
+            <input type="number" placeholder="출생연도" className="input" value={f.year} onChange={e=>setF({...f,year:+e.target.value})}/>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={onClose} className="btn-ghost rounded-lg px-4 py-2 flex-1">취소</button>
+          <button onClick={()=>onSave(f)} className="btn-gold rounded-lg px-4 py-2 flex-1 font-bold">저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QRModal({m, onClose}){
+  const ref = useRef(null);
+  useEffect(()=>{
+    if(ref.current && window.QRCode){
+      ref.current.innerHTML = '';
+      QRCode.toCanvas(`KG3:${m.no}`, {width:240, margin:1}, (err, canvas)=>{
+        if(!err && ref.current){ ref.current.appendChild(canvas); }
+      });
+    }
+  }, [m.no]);
+  return (
+    <div className="modal-bg flex items-center justify-center p-4" onClick={onClose}>
+      <div className="glass luxury-shadow rounded-2xl p-6 max-w-sm w-full text-center" onClick={e=>e.stopPropagation()}>
+        <h3 className="font-black gold-text text-lg mb-1">{m.name}</h3>
+        <div className="text-xs text-[#9CA3B8] mb-4">회원번호 {m.no} · KG3:{m.no}</div>
+        <div ref={ref} className="flex justify-center bg-white rounded-xl p-4"></div>
+        <button onClick={onClose} className="btn-gold rounded-lg px-5 py-2 mt-4 font-bold">닫기</button>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// 통계
+// =========================================================
+function StatsView({history, courts, queue, todayGames, activeMembers}){
+  const usage = courts.filter(c=>c.players.length>0).length;
+  const usageRate = Math.round(usage / courts.length * 100);
+
+  // TOP5 (오늘 게임 많이 친 회원)
+  const top5 = useMemo(()=>{
+    const arr = Object.entries(todayGames).map(([key, count])=>{
+      const player = history.flatMap(h=>h.players).find(p=>p.key===key) || queue.find(p=>p.key===key);
+      return { key, name: player?.name||'?', count, grade:player?.grade||'-' };
+    });
+    return arr.sort((a,b)=>b.count-a.count).slice(0,5);
+  }, [todayGames, history, queue]);
+
+  // 성별/급수별 분포 (대기열 + 진행중)
+  const onSite = [...queue, ...courts.flatMap(c=>c.players)];
+  const byGender = onSite.reduce((a,p)=>{ a[p.gender]=(a[p.gender]||0)+1; return a; }, {});
+  const byGrade = onSite.reduce((a,p)=>{ a[p.grade]=(a[p.grade]||0)+1; return a; }, {});
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Stat label="코트 가동률" value={`${usageRate}%`} sub={`${usage}/${courts.length} 진행`}/>
+        <Stat label="오늘 완료" value={history.length} sub="누적 게임 수"/>
+        <Stat label="현장 인원" value={onSite.length} sub={`회원 ${activeMembers.length}명`}/>
+        <Stat label="대기 평균분" value={queue.length ? Math.round(queue.reduce((s,p)=>s+Math.floor((Date.now()-p.since)/60000),0)/queue.length) : 0} sub="분"/>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="glass luxury-shadow rounded-2xl p-4">
+          <h3 className="font-black gold-text mb-3 flex items-center gap-2">{Icon.star}<span>TOP 5 (오늘 게임 수)</span></h3>
+          {top5.length===0 ? <div className="text-[#9CA3B8] text-sm py-4 text-center">아직 게임 기록 없음</div> :
+            <ul className="space-y-2">
+              {top5.map((p,i)=>(
+                <li key={p.key} className="flex items-center justify-between p-2 rounded-lg bg-[rgba(7,15,28,0.4)]">
+                  <span className="flex items-center gap-2">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i===0?'btn-gold':'bg-[#2C4F7E]'}`}>{i+1}</span>
+                    <b>{p.name}</b><span className={`chip chip-${p.grade}`}>{p.grade}</span>
+                  </span>
+                  <b className="gold-text">{p.count}게임</b>
+                </li>
+              ))}
+            </ul>
+          }
+        </div>
+
+        <div className="glass luxury-shadow rounded-2xl p-4">
+          <h3 className="font-black gold-text mb-3">현장 분포</h3>
+          <div className="text-xs text-[#CFC6B0] mb-2">성별</div>
+          <div className="flex gap-2 mb-3">
+            <span className="chip chip-남">남 {byGender['남']||0}</span>
+            <span className="chip chip-여">여 {byGender['여']||0}</span>
+          </div>
+          <div className="text-xs text-[#CFC6B0] mb-2">급수</div>
+          <div className="flex gap-2 flex-wrap">
+            {GRADE_ORDER.map(g => byGrade[g] ? <span key={g} className={`chip chip-${g}`}>{g} {byGrade[g]}</span> : null)}
+          </div>
+        </div>
+      </div>
+
+      <div className="glass luxury-shadow rounded-2xl p-4">
+        <h3 className="font-black gold-text mb-3">최근 게임 로그 (최대 100건)</h3>
+        {history.length===0 ? <div className="text-[#9CA3B8] text-sm py-6 text-center">기록 없음</div> :
+          <div className="max-h-[320px] overflow-auto">
+            <table className="w-full text-xs">
+              <thead className="text-[#CFC6B0] sticky top-0 bg-[rgba(7,15,28,0.85)]">
+                <tr><th className="py-1.5 px-2 text-left">#</th><th className="text-left">코트</th><th className="text-left">선수</th><th>점수</th><th>시각</th></tr>
+              </thead>
+              <tbody>
+                {history.slice(0,100).map(h=>(
+                  <tr key={h.gameNo} className="border-t border-amber-500/10">
+                    <td className="py-1.5 px-2 font-mono">{h.gameNo}</td>
+                    <td>{h.courtId}</td>
+                    <td>{h.players.map(p=>p.name).join(' · ')}</td>
+                    <td className="text-center gold-text font-bold">{h.score}</td>
+                    <td className="text-center text-[#9CA3B8]">{new Date(h.startedAt).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+function Stat({label, value, sub}){
+  return (
+    <div className="glass luxury-shadow rounded-2xl p-4">
+      <div className="text-xs text-[#CFC6B0]">{label}</div>
+      <div className="text-3xl font-black gold-grad mt-1 tabular-nums">{value}</div>
+      <div className="text-[11px] text-[#9CA3B8] mt-0.5">{sub}</div>
+    </div>
+  );
+}
+
+// =========================================================
+// 운용가이드 (3섹션 · 18스텝)
+// =========================================================
+function GuideView(){
+  const [sec, setSec] = useState('member');
+  const sections = {
+    member: {
+      title: "👥 회원용 (도착 ~ 게임 ~ 퇴장)",
+      steps: [
+        {t:"클럽 도착", d:"입구 태블릿 앞에서 회원증 QR을 비추거나, 도착인증 탭에서 본인 이름을 검색해 입장합니다."},
+        {t:"대기열 등록", d:"입장 즉시 자동으로 대기열에 들어갑니다. 화면 우측에서 본인 위치와 대기시간을 확인하세요."},
+        {t:"매칭 호출 대기", d:"대기시간이 10분을 넘으면 빨간색으로 강조되어 총무가 우선 배정합니다."},
+        {t:"코트 배정 확인", d:"전광판/태블릿에서 본인 이름이 표시된 코트로 이동하세요. 카톡 호출도 동시에 전송됩니다."},
+        {t:"경기 진행", d:"15분 카운트다운이 진행됩니다. 종료 1분 전 비프음과 함께 화면이 빨갛게 깜빡입니다."},
+        {t:"경기 종료", d:"종료음 후 라켓을 정리하고 코트를 비웁니다. 자동으로 다음 매칭이 호출됩니다."},
+      ],
+    },
+    admin: {
+      title: "⚙️ 총무용 (운영 · Override · 게스트)",
+      steps: [
+        {t:"매칭 알고리즘 선택", d:"메인 상단에서 스마트(추천)/공정/혼복/선착순을 상황에 맞게 전환하세요. 스마트는 100점 종합 평가."},
+        {t:"자동 매칭", d:"코트별 [자동 매칭] 버튼을 누르면 상위 12명 중 최적 4인이 즉시 배정됩니다."},
+        {t:"강제 배정 (Override)", d:"대기열에서 4명을 체크박스로 선택 후 코트의 [선택4명 강제배정]을 누르세요. 2인 무한대기 구제 시 활용."},
+        {t:"코트 타입 전환", d:"코트 카드 우상단 ⚙️ 톱니버튼으로 일반→난타→레슨 순환. 빈 코트에서만 가능합니다."},
+        {t:"연겜 처리", d:"경기 종료 후 [대기열로] 버튼을 누르면 4명이 ★표시(귀환) 상태로 큐 뒤에 들어가 매칭 우선순위가 조정됩니다."},
+        {t:"게스트 5인 차단", d:"도착인증 탭 하단에서 등록. 일일 5명 초과 시 자동 차단되어 회원 우선권이 보장됩니다."},
+      ],
+    },
+    faq: {
+      title: "❓ FAQ (자주 묻는 질문)",
+      steps: [
+        {t:"Q. 데이터는 어디에 저장되나요?", d:"이 기기 브라우저의 localStorage에 저장됩니다 (키 프리픽스 kgp3_). 외부 서버 전송 없음."},
+        {t:"Q. 회원이 안 보여요", d:"회원관리 탭 → 검색창에서 번호/이름으로 조회. 삭제했다면 추가 버튼으로 재등록."},
+        {t:"Q. 매칭이 4명 미만으로 안 됨", d:"정상입니다. 일반 코트는 정확히 4명이 매칭됩니다. 대기열이 부족한 경우 호출 전 추가 입장이 필요합니다."},
+        {t:"Q. 자정이 지나면?", d:"날짜가 바뀌면 대기열·코트·기록이 자동 초기화됩니다. 회원 명단은 유지됩니다."},
+        {t:"Q. 비프음이 안 들려요", d:"브라우저 자동재생 정책상 첫 사용자 입력 후 활성화됩니다. 화면을 한 번 클릭/터치하면 동작합니다."},
+        {t:"Q. v1, v2와 차이는?", d:"v1의 QR/카톡/Override/운용가이드 + v2의 4가지 알고리즘/통계/비프음을 통합한 최신 통합판입니다."},
+      ],
+    },
+  };
+  const s = sections[sec];
+  return (
+    <div className="space-y-4">
+      <div className="seg">
+        <button className={sec==='member'?'on':''} onClick={()=>setSec('member')}>👥 회원용</button>
+        <button className={sec==='admin'?'on':''} onClick={()=>setSec('admin')}>⚙️ 총무용</button>
+        <button className={sec==='faq'?'on':''} onClick={()=>setSec('faq')}>❓ FAQ</button>
+      </div>
+      <h2 className="font-black gold-text text-xl">{s.title}</h2>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {s.steps.map((x,i)=>(
+          <div key={i} className="step-card">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-7 h-7 rounded-full btn-gold flex items-center justify-center text-xs font-black">{i+1}</span>
+              <h4 className="font-bold">{x.t}</h4>
+            </div>
+            <p className="text-sm text-[#CFC6B0] leading-relaxed">{x.d}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
+// 마운트
+// =========================================================
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
