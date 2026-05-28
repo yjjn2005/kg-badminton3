@@ -898,9 +898,9 @@ function IntakeView({activeMembers, checkIn, addGuest, guestCountToday, showToas
   }, [scannerOn]);
 
   const filtered = useMemo(()=>{
-    if(!search.trim()) return activeMembers.slice(0,30);
     const s = search.trim();
-    return activeMembers.filter(m => m.name.includes(s) || String(m.no).includes(s)).slice(0,30);
+    if(!s) return activeMembers;
+    return activeMembers.filter(m => m.name.includes(s) || String(m.no).includes(s));
   }, [search, activeMembers]);
 
   return (
