@@ -247,49 +247,64 @@ const beep = (freq=880, dur=0.15, vol=0.18) => {
 };
 
 // =========================================================
-// 매칭 점수 (v1의 100점 알고리즘 + v2 4가지 모드)
+// 매칭 점수 (v3.1: 급수 비중 강화 — 배드민턴 특성 반영)
+// 총 100점 = 급수 50 + 성비 15 + 연령 15 + 게임수 10 + 대기 10
+// 급수차가 큰 조합(A↔초심 같은 4단계↑)은 점수가 사실상 0이 되어 후순위로 밀림.
 // =========================================================
 function calcScore(four, todayGames){
   if(!four || four.length !== 4) return 0;
   let s = 0;
-  // 1. 급수 분산 (35)
+
+  // 1. 급수 분산 + 최대편차 패널티 (50점) — 가장 큰 비중
   const grades = four.map(p=>gradeNum(p.grade));
+  const gMin = Math.min(...grades), gMax = Math.max(...grades);
+  const spread = gMax - gMin; // 0=동일 급수, 5=A↔초심 최대 격차
   const avg = grades.reduce((a,b)=>a+b,0)/4;
   const variance = grades.reduce((x,g)=>x+(g-avg)**2,0)/4;
-  if(variance < 0.1) s += 35;
-  else if(variance < 0.5) s += 28;
-  else if(variance < 1.0) s += 19;
-  else if(variance < 2.0) s += 10;
-  else s += 3;
-  // 2. 성비 (20)
+  let gradePts;
+  if(variance < 0.1) gradePts = 50;       // 4인 전원 동일 급수
+  else if(variance < 0.5) gradePts = 42;  // 인접 1단계 내
+  else if(variance < 1.0) gradePts = 28;  // 평균 1단계 분산
+  else if(variance < 2.0) gradePts = 12;  // 2단계 이상 섞임
+  else gradePts = 0;                      // 매우 큰 분산
+  // 최대 급수차 추가 패널티 (4단계↑ 격차는 사실상 매칭 거부)
+  if(spread >= 4) gradePts = 0;
+  else if(spread === 3) gradePts = Math.min(gradePts, 8);
+  s += gradePts;
+
+  // 2. 성비 (15) — 2:2 이상적
   const m = four.filter(p=>p.gender==='남').length;
   const f = 4-m;
   const d = Math.abs(m-f);
-  if(d===0) s += 20; else if(d===2) s += 14; else s += 6;
-  // 3. 연령대 분산 (20)
+  if(d===0) s += 15; else if(d===2) s += 10; else s += 4;
+
+  // 3. 연령대 분산 (15)
   const ys = four.filter(p=>p.year).map(p=>p.year);
   if(ys.length>=2){
     const yA = ys.reduce((a,b)=>a+b,0)/ys.length;
     const yV = ys.reduce((x,y)=>x+(y-yA)**2,0)/ys.length;
-    if(yV<6.25) s += 20;
-    else if(yV<25) s += 16;
-    else if(yV<56) s += 11;
-    else if(yV<100) s += 6;
-    else s += 2;
-  } else s += 14;
-  // 4. 게임 수 균등 (15)
+    if(yV<6.25) s += 15;
+    else if(yV<25) s += 12;
+    else if(yV<56) s += 8;
+    else if(yV<100) s += 4;
+    else s += 1;
+  } else s += 10;
+
+  // 4. 게임 수 균등 (10) — 오늘 적게 친 사람 우선
   const gms = four.map(p => (todayGames[p.key]||0));
   const aG = gms.reduce((a,b)=>a+b,0)/4;
-  if(aG===0) s += 15;
-  else if(aG<=1) s += 13;
-  else if(aG<=2) s += 9;
-  else if(aG<=3) s += 5;
-  else s += 2;
-  // 5. 대기시간 가중치 (10)
+  if(aG===0) s += 10;
+  else if(aG<=1) s += 8;
+  else if(aG<=2) s += 6;
+  else if(aG<=3) s += 3;
+  else s += 1;
+
+  // 5. 대기시간 가중치 (10) — 오래 기다린 그룹 우선
   const maxW = Math.max(0, ...four.map(p=>p.waitedSec||0));
   if(maxW>=30*60) s += 10;
   else if(maxW>=15*60) s += 7;
   else if(maxW>=5*60) s += 4;
+
   return Math.round(s);
 }
 
@@ -785,7 +800,7 @@ function MainView({courts, queue, now, mode, setMode, matchToCourt, endGame, cou
             </div>
           </div>
           <div className="text-[11px] text-[#9CA3B8]">
-            {mode==='smart' && '급수·성비·연령·게임수·대기 종합 100점 평가 (상위 12명 중 최대 200조합)'}
+            {mode==='smart' && '급수 50 · 성비 15 · 연령 15 · 게임수 10 · 대기 10 (총 100점, A↔초심 같은 4단계↑ 격차는 사실상 배제)'}
             {mode==='fair' && '오늘 게임 적은 순 + 대기 오래된 순'}
             {mode==='mixed' && '남2 + 여2 우선'}
             {mode==='fifo' && '대기열 앞 4명 즉시 배정'}
@@ -1559,7 +1574,7 @@ function GuideView(){
     admin: {
       title: "⚙️ 총무용 (운영 · Override · 게스트)",
       steps: [
-        {t:"매칭 알고리즘 선택", d:"메인 상단에서 스마트(추천)/공정/혼복/선착순을 상황에 맞게 전환하세요. 스마트는 100점 종합 평가."},
+        {t:"매칭 알고리즘 선택", d:"메인 상단에서 스마트(추천)/공정/혼복/선착순을 상황에 맞게 전환. 스마트는 급수 50 + 성비 15 + 연령 15 + 게임수 10 + 대기 10 = 100점. 배드민턴 특성상 급수가 가장 무겁고, A↔초심 같은 4단계↑ 격차는 점수 0으로 배제."},
         {t:"자동 매칭", d:"코트별 [자동 매칭] 버튼을 누르면 상위 12명 중 최적 4인이 즉시 배정됩니다."},
         {t:"강제 배정 (Override)", d:"대기열에서 4명을 체크박스로 선택 후 코트의 [선택4명 강제배정]을 누르세요. 2인 무한대기 구제 시 활용."},
         {t:"코트 타입 전환", d:"코트 카드 우상단 ⚙️ 톱니버튼으로 일반→난타→레슨 순환. 빈 코트에서만 가능합니다."},
@@ -1567,6 +1582,9 @@ function GuideView(){
         {t:"게스트 5인 차단", d:"도착인증 탭 하단에서 등록. 일일 5명 초과 시 자동 차단되어 회원 우선권이 보장됩니다."},
         {t:"📸 사진 시뮬레이션", d:"현재 운영 중인 화이트보드/태블릿을 사진으로 찍어 [사진시뮬] 탭에 업로드하면, 한글 OCR + fuzzy 매칭으로 회원을 자동 식별해 대기열·빈 코트에 일괄 적용합니다. 기존 보드를 디지털로 옮길 때 유용."},
         {t:"⏱ 15분 초과 게임 처리", d:"실제 게임이 15분을 넘으면 코트가 빨갛게 깜빡이며 +MM:SS 양수 카운트업으로 초과 시간을 보여줍니다. 듀스·3게임 등으로 더 필요하면 코트 카드의 [+5분] 버튼으로 즉시 연장. 자동 종료는 없고 항상 총무가 [종료] 버튼을 눌러 마무리합니다."},
+        {t:"🏆 급수 우선 매칭 원칙", d:"스마트 모드는 100점 중 50점이 급수 분산에 배정됩니다. 동일 급수 4인 50점, 인접 1단계 42점, 평균 1단계 분산 28점, A↔초심 같은 4단계↑ 격차는 0점(사실상 매칭 거부). 따라서 6명 큐에 A4 + 초심2가 있으면 무조건 A 4명이 먼저 코트로, 초심 2명은 큐에 남습니다."},
+        {t:"👥 게스트 매칭 시뮬레이션", d:"게스트 1~5명은 도착인증 탭에서 등록 시 급수(B 기본)·성별을 입력합니다. 등록 즉시 회원과 동일하게 큐에 합류하며, 스마트 매칭에서 같은 급수·성비 균형이 되는 회원과 자동 매칭됩니다. 예: 게스트A(B급 남)는 회원 중 B·C급 위주로 묶입니다. 일일 5명 초과 시 등록 자체가 차단됩니다."},
+        {t:"🔢 5명 대기 시 1명이 남는 이유", d:"코트 1면은 정확히 4명. 5명 대기 시 스마트 모드는 200조합 중 최고 점수 4명을 뽑고 1명을 큐에 남깁니다. 보통 급수가 가장 동떨어진 1명이 제외됩니다(2명+3명 = 5명에서 A3+초심2면 A3와 가까운 1명 흡수, 가장 격차 큰 초심 1명 잔류). 큐에 남은 회원은 다음 빈 코트에서 우선 평가됩니다(대기 시간 가중 10점)."},
       ],
     },
     faq: {
