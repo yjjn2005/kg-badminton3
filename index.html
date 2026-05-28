@@ -645,6 +645,7 @@ function App(){
         {tab==='members' && <MembersView
           members={members} setMembers={setMembers}
           deleted={deleted} setDeleted={setDeleted}
+          queue={queue} courts={courts} checkIn={checkIn}
         />}
         {tab==='stats' && <StatsView history={history} courts={courts} queue={queue} todayGames={todayGames} activeMembers={activeMembers}/>}
         {tab==='guide' && <GuideView/>}
@@ -963,19 +964,41 @@ function GuestForm({onAdd, count}){
 }
 
 // =========================================================
-// 회원관리 (CRUD + QR 출력)
+// 회원관리 (CRUD + QR 출력 + 출석체크)
 // =========================================================
-function MembersView({members, setMembers, deleted, setDeleted}){
+function MembersView({members, setMembers, deleted, setDeleted, queue, courts, checkIn}){
   const [editing, setEditing] = useState(null); // member or null
   const [search, setSearch] = useState('');
   const [qrFor, setQrFor] = useState(null);
+  const [filter, setFilter] = useState('all'); // all | idle | waiting | playing
+
+  // 회원별 상태 계산
+  const statusOf = useCallback((no) => {
+    const key = `M${no}`;
+    if(queue.some(q => q.key === key)) return 'waiting';
+    if(courts.some(c => c.players.some(p => p.key === key))) return 'playing';
+    return 'idle';
+  }, [queue, courts]);
 
   const visible = useMemo(()=>{
     const s = search.trim();
     return members.filter(m => !deleted.includes(m.no))
       .filter(m => !s || m.name.includes(s) || String(m.no).includes(s))
+      .filter(m => filter==='all' || statusOf(m.no) === filter)
       .sort((a,b)=>a.no - b.no);
-  }, [members, deleted, search]);
+  }, [members, deleted, search, filter, statusOf]);
+
+  const counts = useMemo(()=>{
+    const active = members.filter(m=>!deleted.includes(m.no));
+    let waiting=0, playing=0, idle=0;
+    active.forEach(m=>{
+      const s = statusOf(m.no);
+      if(s==='waiting') waiting++;
+      else if(s==='playing') playing++;
+      else idle++;
+    });
+    return { all: active.length, idle, waiting, playing };
+  }, [members, deleted, statusOf]);
 
   const save = (m) => {
     if(editing && editing.no){
@@ -991,33 +1014,105 @@ function MembersView({members, setMembers, deleted, setDeleted}){
     setDeleted(d => [...d, no]);
   };
 
+  // 다중선택 출석체크
+  const [selectedNos, setSelectedNos] = useState(new Set());
+  const toggleRow = (no) => setSelectedNos(s => { const n = new Set(s); n.has(no)? n.delete(no): n.add(no); return n; });
+  const selectAllVisibleIdle = () => {
+    const ids = visible.filter(m => statusOf(m.no)==='idle').map(m=>m.no);
+    setSelectedNos(new Set(ids));
+  };
+  const bulkCheckIn = () => {
+    let count = 0;
+    [...selectedNos].forEach(no => {
+      const m = members.find(x=>x.no===no);
+      if(m && statusOf(no)==='idle'){ checkIn(m); count++; }
+    });
+    setSelectedNos(new Set());
+  };
+
+  const filterChips = [
+    { id:'all', label:`전체 ${counts.all}` },
+    { id:'idle', label:`미출석 ${counts.idle}` },
+    { id:'waiting', label:`대기중 ${counts.waiting}` },
+    { id:'playing', label:`경기중 ${counts.playing}` },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="glass luxury-shadow rounded-2xl p-4 flex items-center gap-3 flex-wrap">
         <input type="text" placeholder="이름 또는 번호 검색" value={search} onChange={e=>setSearch(e.target.value)} className="input flex-1 min-w-[200px]"/>
         <button onClick={()=>setEditing({name:'',gender:'남',age:40,year:1985,grade:'B'})} className="btn-gold rounded-lg px-4 py-2 font-bold text-sm flex items-center gap-1">{Icon.plus}회원 추가</button>
-        <span className="text-xs text-[#9CA3B8]">총 {visible.length}명</span>
       </div>
+
+      <div className="glass luxury-shadow rounded-2xl p-3 flex items-center gap-2 flex-wrap">
+        <div className="seg">
+          {filterChips.map(c => (
+            <button key={c.id} className={filter===c.id?'on':''} onClick={()=>setFilter(c.id)}>{c.label}</button>
+          ))}
+        </div>
+        <div className="flex-1"/>
+        {selectedNos.size > 0 && (
+          <>
+            <span className="text-xs text-[#CFC6B0]">선택 {selectedNos.size}명</span>
+            <button onClick={bulkCheckIn} className="btn-gold rounded-lg px-3 py-1.5 text-xs font-bold">선택 {selectedNos.size}명 일괄 출석</button>
+            <button onClick={()=>setSelectedNos(new Set())} className="btn-ghost rounded-lg px-3 py-1.5 text-xs">해제</button>
+          </>
+        )}
+        {selectedNos.size === 0 && (
+          <button onClick={selectAllVisibleIdle} className="btn-ghost rounded-lg px-3 py-1.5 text-xs">현재 화면 미출석 모두 선택</button>
+        )}
+      </div>
+
       <div className="glass luxury-shadow rounded-2xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-[rgba(7,15,28,0.6)] text-[#CFC6B0]">
-            <tr><th className="py-2 px-3 text-left">번호</th><th className="text-left">이름</th><th>성별</th><th>나이</th><th>급수</th><th></th></tr>
+            <tr>
+              <th className="py-2 px-2 w-10"></th>
+              <th className="py-2 px-3 text-left">번호</th>
+              <th className="text-left">이름</th>
+              <th>성별</th>
+              <th>나이</th>
+              <th>급수</th>
+              <th>상태</th>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
-            {visible.map(m=>(
-              <tr key={m.no} className="border-t border-amber-500/10 hover:bg-amber-500/5">
-                <td className="py-2 px-3 font-mono text-xs">{m.no}</td>
-                <td className="font-bold">{m.name}</td>
-                <td className="text-center"><span className={`chip chip-${m.gender}`}>{m.gender}</span></td>
-                <td className="text-center text-[#CFC6B0]">{m.age}</td>
-                <td className="text-center"><span className={`chip chip-${m.grade}`}>{m.grade}</span></td>
-                <td className="text-right pr-3">
-                  <button onClick={()=>setQrFor(m)} className="text-amber-400 text-xs mr-2 hover:underline">QR</button>
-                  <button onClick={()=>setEditing(m)} className="text-blue-400 text-xs mr-2 hover:underline">수정</button>
-                  <button onClick={()=>remove(m.no)} className="text-red-400 text-xs hover:underline">삭제</button>
-                </td>
-              </tr>
-            ))}
+            {visible.map(m=>{
+              const st = statusOf(m.no);
+              const dim = st !== 'idle';
+              return (
+                <tr key={m.no} className={`border-t border-amber-500/10 hover:bg-amber-500/5 ${dim?'opacity-60':''}`}>
+                  <td className="text-center">
+                    <input type="checkbox" checked={selectedNos.has(m.no)} disabled={st!=='idle'}
+                      onChange={()=>toggleRow(m.no)} className="w-4 h-4 accent-amber-400"/>
+                  </td>
+                  <td className="py-2 px-3 font-mono text-xs">{m.no}</td>
+                  <td className="font-bold">{m.name}</td>
+                  <td className="text-center"><span className={`chip chip-${m.gender}`}>{m.gender}</span></td>
+                  <td className="text-center text-[#CFC6B0]">{m.age}</td>
+                  <td className="text-center"><span className={`chip chip-${m.grade}`}>{m.grade}</span></td>
+                  <td className="text-center">
+                    {st==='waiting' && <span className="chip" style={{background:'rgba(232,194,84,0.2)',color:'#E8C254'}}>대기중</span>}
+                    {st==='playing' && <span className="chip" style={{background:'rgba(92,203,122,0.2)',color:'#5CCB7A'}}>경기중</span>}
+                    {st==='idle' && <span className="chip" style={{background:'rgba(180,180,180,0.12)',color:'#9CA3B8'}}>미출석</span>}
+                  </td>
+                  <td className="text-right pr-3 whitespace-nowrap">
+                    {st === 'idle' ? (
+                      <button onClick={()=>checkIn(m)} className="btn-gold rounded-md px-2 py-1 text-xs font-bold mr-2">출석</button>
+                    ) : (
+                      <button disabled className="rounded-md px-2 py-1 text-xs mr-2 bg-gray-700 text-gray-400 cursor-not-allowed">{st==='waiting'?'대기':'경기'}</button>
+                    )}
+                    <button onClick={()=>setQrFor(m)} className="text-amber-400 text-xs mr-2 hover:underline">QR</button>
+                    <button onClick={()=>setEditing(m)} className="text-blue-400 text-xs mr-2 hover:underline">수정</button>
+                    <button onClick={()=>remove(m.no)} className="text-red-400 text-xs hover:underline">삭제</button>
+                  </td>
+                </tr>
+              );
+            })}
+            {visible.length === 0 && (
+              <tr><td colSpan="8" className="text-center py-8 text-[#9CA3B8] text-sm">해당 조건의 회원이 없습니다.</td></tr>
+            )}
           </tbody>
         </table>
       </div>
