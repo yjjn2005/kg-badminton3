@@ -538,6 +538,15 @@ function App(){
     showToast(`코트 ${courtId} 경기 종료`);
   };
 
+  // 게임 시간 연장 (+5분)
+  const extendCourt = (courtId, addMin=5) => {
+    setCourts(cs => cs.map(c => {
+      if(c.id !== courtId || !c.endsAt) return c;
+      return { ...c, endsAt: c.endsAt + addMin*60*1000 };
+    }));
+    showToast(`코트 ${courtId} +${addMin}분 연장`);
+  };
+
   // 코트에서 큐로 (선수 빼기)
   const courtToQueue = (courtId) => {
     const c = courts.find(x=>x.id===courtId);
@@ -658,7 +667,7 @@ function App(){
           courts={courts} queue={queue} now={now}
           mode={mode} setMode={setMode}
           matchToCourt={matchToCourt} endGame={endGame} courtToQueue={courtToQueue}
-          cycleCourtType={cycleCourtType}
+          cycleCourtType={cycleCourtType} extendCourt={extendCourt}
           removeFromQueue={removeFromQueue} onDropOnCourt={onDropOnCourt}
           showToast={showToast} todayGames={todayGames}
         />}
@@ -746,7 +755,7 @@ function Header({tab, setTab, stats, onOpenReset}){
 // =========================================================
 // 메인 뷰 (코트 + 대기열)
 // =========================================================
-function MainView({courts, queue, now, mode, setMode, matchToCourt, endGame, courtToQueue, cycleCourtType, removeFromQueue, onDropOnCourt, showToast, todayGames}){
+function MainView({courts, queue, now, mode, setMode, matchToCourt, endGame, courtToQueue, cycleCourtType, extendCourt, removeFromQueue, onDropOnCourt, showToast, todayGames}){
   const [selected, setSelected] = useState(new Set()); // 드래그 대신 체크박스 다중선택
   const toggleSel = (key) => setSelected(s => {
     const n = new Set(s);
@@ -790,6 +799,7 @@ function MainView({courts, queue, now, mode, setMode, matchToCourt, endGame, cou
               onEnd={()=>endGame(c.id)}
               onReturn={()=>courtToQueue(c.id)}
               onCycle={()=>cycleCourtType(c.id)}
+              onExtend={()=>extendCourt(c.id, 5)}
               onAssignSelected={selected.size===4 ? ()=>assignSelected(c.id) : null}
             />
           ))}
@@ -840,15 +850,20 @@ function MainView({courts, queue, now, mode, setMode, matchToCourt, endGame, cou
 // =========================================================
 // 코트 카드
 // =========================================================
-function CourtCard({c, now, onStart, onEnd, onReturn, onCycle, onAssignSelected}){
-  const remainSec = c.endsAt ? Math.max(0, Math.floor((c.endsAt - now)/1000)) : 0;
-  const urgent = c.endsAt && remainSec <= 60 && remainSec > 0;
+function CourtCard({c, now, onStart, onEnd, onReturn, onCycle, onExtend, onAssignSelected}){
+  const diffSec = c.endsAt ? Math.floor((c.endsAt - now)/1000) : 0;
+  const remainSec = Math.max(0, diffSec);
+  const overSec = diffSec < 0 ? -diffSec : 0;
+  const urgent = c.endsAt && diffSec <= 60 && diffSec > 0;
+  const over = c.endsAt && diffSec <= 0;
   const running = c.players.length>0;
   const mm = String(Math.floor(remainSec/60)).padStart(2,'0');
   const ss = String(remainSec%60).padStart(2,'0');
+  const omm = String(Math.floor(overSec/60)).padStart(2,'0');
+  const oss = String(overSec%60).padStart(2,'0');
 
   return (
-    <div className={`court-card luxury-shadow rounded-2xl p-3 ${c.type} ${running?'running':''} ${urgent?'urgent':''}`}>
+    <div className={`court-card luxury-shadow rounded-2xl p-3 ${c.type} ${running?'running':''} ${urgent||over?'urgent':''}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-base font-black">{c.label}</span>
@@ -871,7 +886,14 @@ function CourtCard({c, now, onStart, onEnd, onReturn, onCycle, onAssignSelected}
               ))}
             </ul>
             {c.type==='match' && (
-              <div className={`text-center text-2xl font-black tabular-nums ${urgent?'text-red-400':remainSec<=180?'gold-text':''}`}>{mm}:{ss}</div>
+              over ? (
+                <div className="text-center">
+                  <div className="text-[10px] text-red-400 font-bold">⏱ 초과</div>
+                  <div className="text-2xl font-black tabular-nums text-red-400">+{omm}:{oss}</div>
+                </div>
+              ) : (
+                <div className={`text-center text-2xl font-black tabular-nums ${urgent?'text-red-400':remainSec<=180?'gold-text':''}`}>{mm}:{ss}</div>
+              )
             )}
           </>
         ) : (
@@ -889,6 +911,9 @@ function CourtCard({c, now, onStart, onEnd, onReturn, onCycle, onAssignSelected}
         {running && (
           <>
             <button onClick={onEnd} className="btn-gold rounded-lg px-3 py-2 text-xs flex-1 flex items-center justify-center gap-1">{Icon.stop}종료</button>
+            {c.type==='match' && onExtend && (
+              <button onClick={onExtend} className="btn-ghost rounded-lg px-2.5 py-2 text-xs font-bold" title="5분 연장">+5분</button>
+            )}
             <button onClick={onReturn} className="btn-ghost rounded-lg px-3 py-2 text-xs">대기열로</button>
           </>
         )}
@@ -1541,6 +1566,7 @@ function GuideView(){
         {t:"연겜 처리", d:"경기 종료 후 [대기열로] 버튼을 누르면 4명이 ★표시(귀환) 상태로 큐 뒤에 들어가 매칭 우선순위가 조정됩니다."},
         {t:"게스트 5인 차단", d:"도착인증 탭 하단에서 등록. 일일 5명 초과 시 자동 차단되어 회원 우선권이 보장됩니다."},
         {t:"📸 사진 시뮬레이션", d:"현재 운영 중인 화이트보드/태블릿을 사진으로 찍어 [사진시뮬] 탭에 업로드하면, 한글 OCR + fuzzy 매칭으로 회원을 자동 식별해 대기열·빈 코트에 일괄 적용합니다. 기존 보드를 디지털로 옮길 때 유용."},
+        {t:"⏱ 15분 초과 게임 처리", d:"실제 게임이 15분을 넘으면 코트가 빨갛게 깜빡이며 +MM:SS 양수 카운트업으로 초과 시간을 보여줍니다. 듀스·3게임 등으로 더 필요하면 코트 카드의 [+5분] 버튼으로 즉시 연장. 자동 종료는 없고 항상 총무가 [종료] 버튼을 눌러 마무리합니다."},
       ],
     },
     faq: {
