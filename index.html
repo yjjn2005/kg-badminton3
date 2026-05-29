@@ -1487,9 +1487,171 @@ function ResetModal({stats, onQueue, onCourts, onToday, onAll, onClose}){
 }
 
 // =========================================================
+// ✋ 수동 빠른 배치판 (OCR 실패 대비, 실제 운영에서 가장 신뢰성 있는 입력 방식)
+// =========================================================
+const SLOT_DEFS = [
+  { id:'court1', label:'코트 1', color:'#D4AF37' },
+  { id:'court2', label:'코트 2', color:'#D4AF37' },
+  { id:'court3', label:'코트 3', color:'#D4AF37' },
+  { id:'court4', label:'코트 4', color:'#D4AF37' },
+  { id:'queue', label:'대기열', color:'#5BA9F5' },
+];
+
+function ManualPlacement({activeMembers, applyPhotoPlacements, showToast}){
+  const [search, setSearch] = useState('');
+  const [selectedNos, setSelectedNos] = useState(new Set());
+  const [placements, setPlacements] = useState({}); // {no: 'court1'|...|'queue'}
+
+  const placedNos = useMemo(()=> new Set(Object.keys(placements).map(Number)), [placements]);
+
+  const filtered = useMemo(()=>{
+    const s = search.trim();
+    return activeMembers
+      .filter(m => !placedNos.has(m.no))
+      .filter(m => !s || m.name.includes(s) || String(m.no).includes(s));
+  }, [activeMembers, placedNos, search]);
+
+  const toggleSel = (no) => setSelectedNos(s => { const n = new Set(s); n.has(no)? n.delete(no): n.add(no); return n; });
+  const clearSel = () => setSelectedNos(new Set());
+
+  const placeIn = (slot) => {
+    if(selectedNos.size === 0){ showToast('회원을 먼저 선택하세요.'); return; }
+    setPlacements(p => {
+      const next = {...p};
+      [...selectedNos].forEach(no => { next[no] = slot; });
+      return next;
+    });
+    clearSel();
+  };
+
+  const removeFromSlot = (no) => setPlacements(p => { const n = {...p}; delete n[no]; return n; });
+
+  const slotMembers = useMemo(()=>{
+    const m = { court1:[], court2:[], court3:[], court4:[], queue:[] };
+    Object.entries(placements).forEach(([no, slot]) => {
+      const mem = activeMembers.find(x => x.no === Number(no));
+      if(mem) m[slot]?.push(mem);
+    });
+    return m;
+  }, [placements, activeMembers]);
+
+  const apply = () => {
+    const entries = Object.entries(placements);
+    if(entries.length === 0){ showToast('배치된 회원이 없습니다.'); return; }
+    const over = [1,2,3,4].find(i => slotMembers[`court${i}`].length > 4);
+    if(over){ showToast(`코트${over}에 ${slotMembers[`court${over}`].length}명 — 4명을 초과합니다.`); return; }
+    const arr = entries.map(([no, target]) => {
+      const mem = activeMembers.find(x => x.no === Number(no));
+      return { member: mem, target };
+    }).filter(x => x.member);
+    applyPhotoPlacements(arr);
+    setPlacements({}); setSelectedNos(new Set()); setSearch('');
+  };
+
+  return (
+    <div className="grid lg:grid-cols-5 gap-3">
+      {/* 좌측: 회원 검색 */}
+      <div className="lg:col-span-2 glass luxury-shadow rounded-2xl p-3 lg:max-h-[640px] lg:overflow-auto">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-black gold-text">회원 검색 ({filtered.length})</h4>
+          {selectedNos.size>0 && <button onClick={clearSel} className="text-xs text-[#9CA3B8] hover:text-amber-400">선택 {selectedNos.size}명 해제</button>}
+        </div>
+        <input type="text" placeholder="이름/번호 검색" value={search} onChange={e=>setSearch(e.target.value)} className="input mb-2"/>
+        <div className="flex gap-1.5 mb-2 flex-wrap">
+          {SLOT_DEFS.map(s => (
+            <button key={s.id} onClick={()=>placeIn(s.id)}
+              disabled={selectedNos.size===0}
+              className={`text-xs font-bold rounded-lg px-2.5 py-1.5 ${selectedNos.size===0 ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-gold'}`}>
+              → {s.label}
+            </button>
+          ))}
+        </div>
+        <ul className="space-y-1">
+          {filtered.slice(0, 60).map(m => {
+            const sel = selectedNos.has(m.no);
+            return (
+              <li key={m.no}>
+                <label className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer ${sel?'bg-amber-500/15 border border-amber-500/40':'border border-transparent hover:bg-amber-500/5'}`}>
+                  <input type="checkbox" checked={sel} onChange={()=>toggleSel(m.no)} className="w-4 h-4 accent-amber-400"/>
+                  <span className="text-xs font-mono text-[#9CA3B8] w-7 text-right">{m.no}</span>
+                  <span className="font-bold text-sm flex-1">{m.name}</span>
+                  <span className={`chip chip-${m.gender}`}>{m.gender}</span>
+                  <span className={`chip chip-${m.grade}`}>{m.grade}</span>
+                </label>
+              </li>
+            );
+          })}
+          {filtered.length === 0 && <li className="text-center text-xs text-[#9CA3B8] py-4">표시할 회원이 없습니다.</li>}
+          {filtered.length > 60 && <li className="text-center text-[10px] text-[#9CA3B8] py-2">… 더 좁히려면 검색어를 입력하세요</li>}
+        </ul>
+      </div>
+
+      {/* 우측: 5개 슬롯 */}
+      <div className="lg:col-span-3 space-y-3">
+        <div className="glass luxury-shadow rounded-2xl p-3 flex items-center gap-2 flex-wrap text-xs">
+          <span className="text-[#CFC6B0]">현재 배치:</span>
+          <span className="badge-stat">대기 <b className="gold-text">{slotMembers.queue.length}</b></span>
+          {[1,2,3,4].map(i => {
+            const n = slotMembers[`court${i}`].length;
+            const over = n > 4;
+            return (
+              <span key={i} className="badge-stat" style={over?{borderColor:'#E25555', color:'#E25555'}:{}}>
+                코트{i} <b className={over?'text-red-400':'gold-text'}>{n}/4</b>
+              </span>
+            );
+          })}
+          <div className="flex-1"/>
+          <button onClick={()=>setPlacements({})} className="btn-ghost rounded-lg px-3 py-1.5 text-xs">전체 비우기</button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {SLOT_DEFS.map(s => {
+            const members = slotMembers[s.id];
+            const over = s.id.startsWith('court') && members.length > 4;
+            const isQueue = s.id === 'queue';
+            return (
+              <div key={s.id} className={`court-card luxury-shadow rounded-2xl p-3 ${isQueue?'':'match'} ${over?'urgent':''} ${isQueue?'col-span-2':''}`} style={over?{borderColor:'#E25555'}:{}}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-black gold-text">{s.label}</span>
+                  <span className={`text-xs font-bold ${over?'text-red-400':'text-[#CFC6B0]'}`}>
+                    {members.length}{isQueue ? '명' : '/4'}{over && ' ⚠'}
+                  </span>
+                </div>
+                {members.length === 0 ? (
+                  <div className="text-center py-3 text-xs text-[#9CA3B8]">{isQueue ? '대기 인원 없음' : '비어 있음'}</div>
+                ) : (
+                  <ul className={`${isQueue?'grid grid-cols-2 sm:grid-cols-3 gap-1':'space-y-1'}`}>
+                    {members.map(m => (
+                      <li key={m.no}>
+                        <button onClick={()=>removeFromSlot(m.no)} title="제거"
+                          className="w-full text-left text-xs px-2 py-1 rounded-lg bg-[rgba(7,15,28,0.5)] hover:bg-red-500/15 flex items-center gap-1.5">
+                          <span className="font-bold truncate">{m.name}</span>
+                          <span className="text-[#9CA3B8]">{m.gender}{m.grade}</span>
+                          <span className="ml-auto text-red-400 text-[10px]">✕</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <button onClick={apply} disabled={Object.keys(placements).length===0}
+          className={`w-full rounded-2xl px-4 py-3 font-black text-base ${Object.keys(placements).length===0 ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-gold'}`}>
+          ✓ 배치 {Object.keys(placements).length}명 즉시 적용 (4명 모인 코트는 카운트다운 시작)
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
 // 📸 사진 OCR 시뮬레이션 (v1 강점)
 // =========================================================
 function PhotoSimView({activeMembers, applyPhotoMembers, applyPhotoPlacements, showToast}){
+  const [mode, setMode] = useState('manual'); // 'photo' | 'manual' — 기본은 수동 (OCR 실패 대비)
   const [step, setStep] = useState('upload'); // upload | preview | recognizing | result
   const [imgUrl, setImgUrl] = useState(null);
   const [progress, setProgress] = useState(0);
@@ -1577,11 +1739,22 @@ function PhotoSimView({activeMembers, applyPhotoMembers, applyPhotoPlacements, s
   return (
     <div className="space-y-4">
       <div className="glass luxury-shadow rounded-2xl p-4">
-        <h3 className="font-black gold-text text-lg mb-1 flex items-center gap-2">{Icon.camera}<span>현재 게임판 사진 → 자동 시뮬레이션</span></h3>
-        <p className="text-xs text-[#9CA3B8]">현장 화이트보드/태블릿에 표시된 명단을 사진으로 찍어 업로드하면, 한글 OCR + Levenshtein fuzzy 매칭으로 회원을 자동 식별해 대기열과 빈 코트에 일괄 적용합니다.</p>
+        <h3 className="font-black gold-text text-lg mb-2 flex items-center gap-2">{Icon.camera}<span>현장 상황 입력 — 게임중·대기 동시 반영</span></h3>
+        <div className="seg mb-2">
+          <button className={mode==='manual'?'on':''} onClick={()=>setMode('manual')}>✋ 수동 빠른 배치 (추천)</button>
+          <button className={mode==='photo'?'on':''} onClick={()=>setMode('photo')}>📸 사진 OCR (보조)</button>
+        </div>
+        <p className="text-xs text-[#9CA3B8]">
+          {mode==='manual' && '회원을 검색·체크해서 대기 / 코트1~4 슬롯에 바로 배치합니다. OCR 없이 가장 빠르고 정확한 입력 방식.'}
+          {mode==='photo' && '화이트보드 사진을 업로드해 한글 OCR로 자동 인식. 손글씨·저조도·각도에서 정확도가 떨어질 수 있으니, OCR 결과가 부족하면 [수동 빠른 배치]로 전환하세요.'}
+        </p>
       </div>
 
-      {step === 'upload' && (
+      {mode === 'manual' && (
+        <ManualPlacement activeMembers={activeMembers} applyPhotoPlacements={applyPhotoPlacements} showToast={showToast}/>
+      )}
+
+      {mode === 'photo' && step === 'upload' && (
         <div className="glass luxury-shadow rounded-2xl p-8">
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e=>onFile(e.target.files[0])}/>
           <div onClick={()=>fileRef.current?.click()}
@@ -1599,7 +1772,7 @@ function PhotoSimView({activeMembers, applyPhotoMembers, applyPhotoPlacements, s
         </div>
       )}
 
-      {step === 'preview' && (
+      {mode === 'photo' && step === 'preview' && (
         <div className="glass luxury-shadow rounded-2xl p-4">
           <img src={imgUrl} alt="" className="max-w-full max-h-[420px] mx-auto rounded-xl border border-amber-500/20"/>
           {statusMsg && <div className="text-center text-sm text-red-400 mt-2">{statusMsg}</div>}
@@ -1610,7 +1783,7 @@ function PhotoSimView({activeMembers, applyPhotoMembers, applyPhotoPlacements, s
         </div>
       )}
 
-      {step === 'recognizing' && (
+      {mode === 'photo' && step === 'recognizing' && (
         <div className="glass luxury-shadow rounded-2xl p-8 text-center">
           <div className="text-5xl mb-3 animate-pulse">🔍</div>
           <div className="font-bold gold-text mb-3">{statusMsg}</div>
@@ -1626,7 +1799,7 @@ function PhotoSimView({activeMembers, applyPhotoMembers, applyPhotoPlacements, s
         </div>
       )}
 
-      {step === 'result' && (
+      {mode === 'photo' && step === 'result' && (
         <>
           <div className="glass luxury-shadow rounded-2xl p-4">
             <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
@@ -1734,7 +1907,8 @@ function GuideView(){
         {t:"코트 타입 전환", d:"코트 카드 우상단 ⚙️ 톱니버튼으로 일반→난타→레슨 순환. 빈 코트에서만 가능합니다."},
         {t:"연겜 처리", d:"경기 종료 후 [대기열로] 버튼을 누르면 4명이 ★표시(귀환) 상태로 큐 뒤에 들어가 매칭 우선순위가 조정됩니다."},
         {t:"게스트 5인 차단", d:"도착인증 탭 하단에서 등록. 일일 5명 초과 시 자동 차단되어 회원 우선권이 보장됩니다."},
-        {t:"📸 사진 시뮬레이션 (게임중+대기 동시 반영)", d:"화이트보드 사진 업로드 → 한글 OCR이 '코트1', '대기' 같은 헤더를 자동 인식해 회원별 위치를 [대기/코트1~4] 드롭다운에 미리 채워둡니다. 잘못 인식된 항목은 드롭다운으로 즉시 수정. 적용하면 코트에 4명 모인 곳은 카운트다운 자동 시작, 4명 미만 코트는 자리만 채워두고 총무가 보강 가능."},
+        {t:"✋ 수동 빠른 배치 (현장 1순위)", d:"[사진시뮬] 탭 기본 모드. 좌측에서 회원을 검색·체크 → 우측의 [→ 코트1] [→ 대기] 버튼으로 한 번에 배치. 5개 슬롯(대기/코트1~4)이 화이트보드처럼 보입니다. 마지막에 [즉시 적용] 한 번이면 게임중인 회원은 코트로, 대기 회원은 대기열로 동시 반영. OCR 손글씨 인식이 부정확할 때 가장 신뢰성 높은 방식."},
+        {t:"📸 사진 OCR (보조)", d:"사진시뮬 탭에서 [📸 사진 OCR] 모드로 전환. 화이트보드 사진을 업로드하면 한글 OCR이 '코트1', '대기' 헤더를 자동 인식해 회원별 위치를 미리 채워두고, 드롭다운으로 수동 보정. 손글씨/저조도/각도에서 정확도가 떨어질 수 있어 보조용으로 권장."},
         {t:"⏱ 15분 초과 게임 처리", d:"실제 게임이 15분을 넘으면 코트가 빨갛게 깜빡이며 +MM:SS 양수 카운트업으로 초과 시간을 보여줍니다. 듀스·3게임 등으로 더 필요하면 코트 카드의 [+5분] 버튼으로 즉시 연장. 자동 종료는 없고 항상 총무가 [종료] 버튼을 눌러 마무리합니다."},
         {t:"🏆 급수 우선 매칭 원칙", d:"스마트 모드는 100점 중 50점이 급수 분산에 배정됩니다. 동일 급수 4인 50점, 인접 1단계 42점, 평균 1단계 분산 28점, A↔초심 같은 4단계↑ 격차는 0점(사실상 매칭 거부). 따라서 6명 큐에 A4 + 초심2가 있으면 무조건 A 4명이 먼저 코트로, 초심 2명은 큐에 남습니다."},
         {t:"👥 게스트 매칭 시뮬레이션", d:"게스트 1~5명은 도착인증 탭에서 등록 시 급수(B 기본)·성별을 입력합니다. 등록 즉시 회원과 동일하게 큐에 합류하며, 스마트 매칭에서 같은 급수·성비 균형이 되는 회원과 자동 매칭됩니다. 예: 게스트A(B급 남)는 회원 중 B·C급 위주로 묶입니다. 일일 5명 초과 시 등록 자체가 차단됩니다."},
